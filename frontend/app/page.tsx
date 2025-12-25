@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useContext } from "react";
 import { Header } from "@/components/iris/Header";
 import { UnLoginHeader } from "@/components/iris/unloginHeader";
+import { ParticleTextReveal }  from "@/components/iris/ParticleTextReveal";
 // import { getAuth, onAuthStateChanged, User } from "firebase/auth";
 // import { auth } from "@/lib/firebase";
 export default function HomePage() {
@@ -51,6 +52,7 @@ export default function HomePage() {
             // 非ログインユーザー時での表示
             <div>
                 <UnLoginHeader />
+                <ParticleTextReveal />
             </div>
         )}
     </div>

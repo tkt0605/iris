@@ -26,7 +26,7 @@ export function Header() {
     return (
         <header className="fixed top-0 md:left-60 sm:left-0 inset-x-0 h-14 z-30">
 
-            <div className="max-w-9wl mx-auto h-full px-6 flex items-center gap-3">
+            <div className="max-w-9wl mx-auto h-full px-6 flex items-center justify-center gap-3">
                 <div className="flex items-center justify-between">
                     <div className="md:hidden">
                         <button onClick={() => router.push('')} className="text-gray-700 hover:text-white rounded-xl hover:bg-white/10 p-2 duration-300">
@@ -36,7 +36,7 @@ export function Header() {
                             </svg>
                         </button>
                     </div>
-                    <span className="md:hidden text-2xl font-bold tracking-tighter">I/R/I/S</span>
+                    <span className="text-2xl font-bold tracking-tighter">I/R/I/S</span>
                 </div>
                 <div className="flex-1"></div>
                 <div className="flex items-center gap-6 text-sm">
