@@ -3,6 +3,7 @@
 import React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/utils/supabase";
 export function Header() {
     const router = useRouter();
     const [user, setUser] = useState<any>(null);
@@ -22,7 +23,19 @@ export function Header() {
 
         }
     }
-
+    useEffect(() => {
+        const getAuth = async() => {
+            const { data: {session} } = await supabase.auth.getSession();
+            setUser(session?.user ?? null);
+            setLoading(false);
+        };
+        getAuth();
+        const { data: {subscription} } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+            setLoading(false);
+        });
+        return () => subscription.unsubscribe();
+    }, []);
     return (
         <header className="fixed top-0 md:left-60 sm:left-0 inset-x-0 h-14 z-30">
 

@@ -3,6 +3,9 @@
 import React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/utils/supabase";
+import { User } from "@supabase/supabase-js";
+import { ReactServerDOMTurbopackServer } from "next/dist/server/route-modules/app-page/vendored/rsc/entrypoints";
 export function UnLoginHeader() {
     const router = useRouter();
     const [user, setUser] = useState<any>(null);
@@ -11,21 +14,24 @@ export function UnLoginHeader() {
     const [open, setOpen] = useState(false);
     const [sideOpen, setSideOpen] = useState<any>(false);
     const [opensearch, setOpenSearch] = useState(false);
+    useEffect(() => {
+        const getAuth = async () => {
+            const { data: {session} } = await supabase.auth.getSession();
+            setUser(session?.user ?? null);
+            setLoading(false);
+        };
+        getAuth
 
-    const logout = () => {
-        return console.log('ログアウト');
-    };
-    const HeadWidth = () => {
-        if (user) {
+        const { data: { subscription }} = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+            setLoading(false);
+        });
 
-        } else {
-
-        }
-    }
-
+        return () => subscription.unsubscribe();
+    }, []);
     return (
         <header className="fixed top-0 left-0 inset-x-0 h-14 z-30">
-            <div className="max-w-9wl mx-auto h-full md:px-6 sm:px-6 flex items-center justify-between gap-3">
+            <div className="max-w-9wl mx-auto h-full md:px-36 sm:px-36 flex items-center justify-between gap-3">
                 <div className="flex items-center justify-between">
                     <div className="md:hidden">
                         <button onClick={() => router.push('')} className="text-gray-700 hover:text-white rounded-xl hover:bg-white/10 p-2 duration-300">
@@ -47,7 +53,7 @@ export function UnLoginHeader() {
                                 <button onClick={() => setOpen((v) => !v)} className="p-2 text-white rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200 shadow-sm backdrop-blur-sm">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-person" viewBox="0 0 16 16"> <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z" /> </svg>
                                 </button>
-                                : <button onClick={() => router.push("/auth/login")} className="px-4 py-1.5 rounded-full bg-white/10 text-cyan-300 hover:bg-white/20 transition">
+                                : <button onClick={() => router.push("/auth/login")} className="px-4 py-1.5 rounded-full bg-white/10 border-black hover:bg-white/20 transition">
                                     ログイン
                                 </button>
                         }
