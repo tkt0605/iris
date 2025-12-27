@@ -8,16 +8,17 @@ interface IndexLayoutProps{
     children: React.ReactNode
 }
 export default function IndexLayout({children} : IndexLayoutProps){
-    const [isOpen, setOpen] = useState(false);
+    const [isOpen, setOpen] = useState<any>(false);
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState<boolean>(true); // 初期値はtrueが良いです
     
     return (
         <div className="min-h-screen flex bg-white dark:bg-black">
-            <div className="hidden md:block">
+            <div className=" md:block sm:hidden">
                 { !isOpen && (
                     <Aside />
                 )}
+                {/* <Aside /> */}
             </div>
 
 

@@ -38,18 +38,6 @@ export default function HomePage() {
   }, []);
   return (
     <div>
-      {loading ?
-        <div></div>
-        : user ?
-          // ログインユーザー時での表示
-          <div></div>
-          :
-          // 非ログインユーザー時での表示
-          <div>
-            <UnLoginHeader />
-            <ParticleTextReveal />
-          </div>
-      }
     </div>
   );
 }

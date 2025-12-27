@@ -224,6 +224,7 @@ export function ParticleTextReveal() {
         SCROLL DOWN ↓
       </motion.div>
       )}
+      {/* ここに、球体をクリックしたら、IRISが自身の説明をする。以下の欄に文章を生成 */}
       {isTextMode && (
         <motion.div
           initial={{ opacity: 0 }}
