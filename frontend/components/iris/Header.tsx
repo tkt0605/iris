@@ -3,9 +3,10 @@
 import React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@/utils/supabase";
 export function Header() {
     const router = useRouter();
+    const supabase = createClient();
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     // const router = useRouter();

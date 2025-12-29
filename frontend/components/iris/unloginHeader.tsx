@@ -3,11 +3,12 @@
 import React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@/utils/supabase";
 import { User } from "@supabase/supabase-js";
 import { ReactServerDOMTurbopackServer } from "next/dist/server/route-modules/app-page/vendored/rsc/entrypoints";
 export function UnLoginHeader() {
     const router = useRouter();
+    const supabase = createClient();
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     // const router = useRouter();

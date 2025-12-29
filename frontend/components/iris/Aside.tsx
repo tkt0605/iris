@@ -27,7 +27,7 @@ export function Aside() {
                 <nav className="flex-1 py-1 overflow-y-auto  space-y-1">
                     <div className="flex items-center justify-between">
                         <button className="p-1 hover:bg-black/5 rounded-lg" aria-label="ロゴ">
-                            <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="8">
+                            <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="8">
                                 <circle cx="50" cy="50" r="42" />
                                 <path d="M50 20 Q35 50 50 80" />
                                 <path d="M50 20 L50 80" />
