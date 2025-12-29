@@ -38,7 +38,6 @@ export default function HomePage() {
     return () => subscription.unsubscribe();
   }, []);
   return (
-    <div>
-    </div>
+    <div></div>
   );
 }
