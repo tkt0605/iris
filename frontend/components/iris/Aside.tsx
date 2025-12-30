@@ -12,21 +12,18 @@ export function Aside() {
     const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
     const [sideOpen, setSideOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const [opensearch, setOpensearch] = useState(false);
     // const [ discussion, setDiscussion ] = useState<Discussion[]>([]);
     const [discussion, setDiscussion] = useState([]);
     const [openSearch, setOpenSearch] = useState<boolean>(false);
     const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
     useEffect(() => {
-        const handleResize = () => {
-            setWindowSize({
-                width: window.innerWidth,
-                height: window.innerHeight,
-            });
-        };
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+        const saved = localStorage.getItem("AsideOpenStorage");
+        if (saved !== null ){
+            setSideOpen(saved === "true");
+        }
+        setMounted(true);
     }, []);
     useEffect(() => {
         const getAuth = async () => {
@@ -42,34 +39,35 @@ export function Aside() {
         return () => subscription.unsubscribe();
     }, []);
     const SidebarOpenAction = () => {
-        const width = windowSize.width;
         try {
-            const isMobile = width > 768
-            if (isMobile) {
-                setSideOpen((prev) => !prev);
-            } else {
-                setSideOpen(false);
-            }
-            console.log(`SUCCESS: ${sideOpen}`);
+            setSideOpen( prev => {
+                const next = !prev;
+                localStorage.setItem('AsideOpenStorage', String(next));
+                return next;
+            });
         } catch (error) {
             console.error(error);
         }
     };
     return (
+        // Aside.tsxでのソース
         // <aside className="hidden sm:flex flex-col fixed w-64 top-0 left-0 h-screen bg-gray-400/5 dark:bg-black p-2 gap-2 z-10 border-r border-gray-700/20">
-        <aside className={[
-            "hidden sm:flex flex-col fixed top-0 left-0 h-screen bg-gray-400/5 dark:bg-black p-2 gap-2 z-10 border-r border-gray-700/20",
-            "bg-gray-400/5 dark:bg-black",
-            "transition-all duration-300 ease-in-out",
-            sideOpen ? "w-12" : "w-64",
-        ].join(" ")}>
+    
+        // <aside className={[
+        //     "sm:flex flex-col fixed top-0 left-0 h-screen bg-gray-400/5 dark:bg-black gap-2 z-10 ",
+        //     sideOpen ? "w-16 duration-500 border-r border-gray-700/20" : "w-60 duration-500 border-r border-gray-700/20"
+        // ].join('')}>
+        <aside className={`
+            hidden sm:flex flex-col fixed top-0 left-0 h-screen bg-gray-400/5 dark:bg-black gap-2 z-10 border-r border-gray-700/20
+            ${mounted ? "duration-300" : ""}
+            ${sideOpen ? "w-16" : "w-64"}
+        `}>
             <nav className="shrink-0 space-y-1 z-10">
-                {/* <div className="flex items-center justify-between"> */}
                 <div className={[
                     sideOpen ? "" : "flex items-center justify-between"
                 ].join(" ")}>
                     {!sideOpen &&
-                        <button className="p-1 px-4 hover:bg-black/5 rounded-lg" aria-label="ロゴ">
+                        <button className="p-1 px-4 rounded-lg" aria-label="ロゴ">
                             <span className="text-2xl font-bold tracking-tighter">I/R/I/S</span>
                         </button>
                     }
@@ -85,13 +83,6 @@ export function Aside() {
                     </div>
                 </div>
 
-                {/* <button className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition" onClick={() => router.push('/home')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="w-5 h-5 bi bi-plus-square" viewBox="0 0 16 16">
-                        <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z" />
-                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4" />
-                    </svg>
-                    {!sideOpen && <span>新しい相談</span>}
-                </button> */}
                 <div className="cursor-pointer rounded-lg gap-2 p-2 flex items-center justify-center  ">
                     <button className={[
                         sideOpen ? "text-gray-700  rounded-xl hover:bg-gray-700/20  duration-300 p-2" : "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition"
@@ -113,20 +104,12 @@ export function Aside() {
                         {!sideOpen && <span>相談を検索する。</span>}
                     </button>
                 </div>
-                {/* <button onClick={() => setOpenSearch(true)} className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-search" viewBox="0 0 16 16">
-                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
-                    </svg>
-                    {!sideOpen && <span>相談を検索する。</span>}
-                </button> */}
             </nav>
             {!sideOpen &&
                 <div className="flex-1 overflow-y-auto min-h-0 py-1 space-y-1">
-                    {/* ヘッダー部分 */}
                     <div className="flex w-full items-center justify-start shrink-0">
                         <h2 className="px-3 text-sm text-gray-900/50">あなたの相談</h2>
                     </div>
-                    {/* <div className="py-1 space-y-1 flex-1 overflow-y-auto min-h-0">*/}
                     <div className="flex-1 overflow-y-auto min-h-0 py-1  space-y-1 scrollbar scrollbar-thumb-gray-400 scrollbar-track-transparent hover:scrollbar-thumb-gray-500">
                         {discussion?.length === 0 && (
                             <span className="px-3">履歴がありません。</span>
@@ -146,9 +129,8 @@ export function Aside() {
                     </div>
                 </div>
             }
-            {/* フッター部分（固定） */}
-            <div className="shrink-0 mt-auto">
-                <div className="cursor-pointer p-2 hover:bg-black/5 rounded-lg gap-2 flex items-center justify-center">
+            <div className="shrink-0 mt-auto border-t border-gray-700/20">
+                <div className="cursor-pointer p-2 hover:bg-black/5  gap-2 flex items-center justify-center">
                     <button className="p-2 rounded-full bg-gray-700/20 duration-200 shadow-sm backdrop-blur-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-person" viewBox="0 0 16 16"> <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z" /> </svg>
                     </button>

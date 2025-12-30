@@ -8,7 +8,8 @@ import { Header } from "@/components/iris/Header";
 import { UnLoginHeader } from "@/components/iris/unloginHeader";
 import { ParticleTextReveal } from "@/components/iris/ParticleTextReveal";
 import { Aside } from "@/components/iris/Aside";
-import { createClient} from "@/utils/supabase";
+import { RecordingWithIris } from "@/components/iris/RecordingWithIris";
+import { createClient } from "@/utils/supabase";
 
 export default function HomePage() {
   const router = useRouter();
@@ -38,6 +39,28 @@ export default function HomePage() {
     return () => subscription.unsubscribe();
   }, []);
   return (
-    <div></div>
+    <div className="flex flex-col justify-center h-full">
+      <div>
+        <div className="relative basis-auto shrink flex flex-col  max-sm:grow max-sm:justify-center">
+          <div className="flex items-center justify-center">
+            <div className="mb-7 hidden text-center sm:block">
+              <div className="relative inline-flex justify-center text-center text-2xl leading-9 font-semiblod">
+                <div>
+                  <h1 className="text-page-header inline-flex min-h-10.5 items-baseline whitespace-pre-wrap">
+                    今日は何をしましょうか？
+                  </h1>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="">
+          <div className="flex items-center justify-center">
+            <RecordingWithIris />
+          </div>
+        </div>
+      </div>
+    </div>
+
   );
 }

@@ -1,5 +1,4 @@
 "use client";
-
 import React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,19 +10,21 @@ export function Header() {
     const [loading, setLoading] = useState(true);
     // const router = useRouter();
     const [open, setOpen] = useState(false);
-    const [sideOpen, setSideOpen] = useState<any>(false);
+    const [sideOpen, setSideOpen] = useState(false);
+    const [mounted, setMounted ] = useState(false);
     const [opensearch, setOpenSearch] = useState(false);
-
     const logout = () => {
         return console.log('ログアウト');
     };
-    const HeadWidth = () => {
-        if (user) {
-
-        } else {
-
+    useEffect(() => {
+        setMounted(true);
+        const saved = localStorage.getItem('AsideOpenStorage');
+        if (saved !== null){
+            setSideOpen(saved === "true");
         }
-    }
+        console.log(sideOpen);
+        setMounted(true);
+    }, []);
     useEffect(() => {
         const getAuth = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -38,8 +39,17 @@ export function Header() {
         return () => subscription.unsubscribe();
     }, []);
     return (
-        <header className="fixed top-0 md:left-60 sm:left-0 inset-x-0 h-14 z-30">
-
+        // <header className={[
+        //     "fixed top-0 bg-transparent  inset-x-0 h-14 z-50",
+        //     sideOpen ? "md:left-16 duration-300 border-b border-gray-700/20" : "md:left-60 duration-300 border-b border-gray-700/20"
+        // ].join('')}>
+        <header
+            className={`
+                fixed top-0 bg-transparent inset-x-0 h-14 z-50 border-b border-gray-700/20
+                ${mounted ? "duration-300" : ""} 
+                ${sideOpen ? "md:left-16" : "md:left-60"}
+            `} 
+        >
             <div className="max-w-9wl mx-auto h-full px-6 sm:px-2 flex items-center justify-center gap-3">
                 <div className="flex items-center justify-between">
                     <div className="md:hidden">
@@ -50,7 +60,6 @@ export function Header() {
                             </svg>
                         </button>
                     </div>
-                    {/* <span className="md:hidden text-2xl font-bold tracking-tighter">I/R/I/S</span> */}
                 </div>
                 <div className="flex-1"></div>
                 <div className="flex items-center gap-8 text-sm">
@@ -93,3 +102,34 @@ export function Header() {
         </header>
     );
 }
+// import React from 'react';
+// import { useRouter } from 'next/navigation';
+
+// // 必要なPropsがあれば追加してください
+// export  function Header() {
+//     const router = useRouter();
+
+//     return (
+//         <header className="w-full h-full flex items-center justify-between px-4 border-b border-gray-700/20 bg-white/80 dark:bg-black/80 backdrop-blur-md">
+            
+//             {/* 左側コンテンツ */}
+//             <div className="flex items-center">
+//                  {/* モバイル用のハンバーガーメニューが必要ならここに配置 */}
+//                  <div className="md:hidden mr-4">
+//                     <button>Menu</button>
+//                  </div>
+//                  <h1 className="font-semibold text-sm">Dashboard</h1>
+//             </div>
+
+//             {/* 右側コンテンツ（ユーザーアイコンなど） */}
+//             <div className="flex items-center gap-4">
+//                 <button 
+//                     onClick={() => router.push('/auth/login')}
+//                     className="text-sm px-3 py-1 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 transition"
+//                 >
+//                     Login
+//                 </button>
+//             </div>
+//         </header>
+//     );
+// }
