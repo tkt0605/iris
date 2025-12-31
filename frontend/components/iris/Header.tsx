@@ -3,7 +3,10 @@ import React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase";
-export function Header() {
+interface HeaderProps{
+    isSideOpen: boolean;
+}
+export function Header({isSideOpen}: HeaderProps) {
     const router = useRouter();
     const supabase = createClient();
     const [user, setUser] = useState<any>(null);
@@ -17,7 +20,6 @@ export function Header() {
         return console.log('ログアウト');
     };
     useEffect(() => {
-        setMounted(true);
         const saved = localStorage.getItem('AsideOpenStorage');
         if (saved !== null){
             setSideOpen(saved === "true");
@@ -46,8 +48,8 @@ export function Header() {
         <header
             className={`
                 fixed top-0 bg-transparent inset-x-0 h-14 z-50 border-b border-gray-700/20
-                ${mounted ? "duration-300" : ""} 
-                ${sideOpen ? "md:left-16" : "md:left-60"}
+                ${mounted ? "duration-300" : "duration-300"} 
+                ${isSideOpen ? "md:left-16" : "md:left-64"}
             `} 
         >
             <div className="max-w-9wl mx-auto h-full px-6 sm:px-2 flex items-center justify-center gap-3">
