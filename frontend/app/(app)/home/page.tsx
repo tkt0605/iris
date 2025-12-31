@@ -41,7 +41,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col justify-center h-full">
       <div>
-        <div className="relative basis-auto shrink flex flex-col  max-sm:grow max-sm:justify-center">
+        {/* <div className="relative basis-auto shrink flex flex-col  max-sm:grow max-sm:justify-center">
           <div className="flex items-center justify-center">
             <div className="mb-7 hidden text-center sm:block">
               <div className="relative inline-flex justify-center text-center text-2xl leading-9 font-semiblod">
@@ -53,8 +53,8 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-        </div>
-        <div className="">
+        </div> */}
+        <div className="pt-20">
           <div className="flex items-center justify-center">
             <RecordingWithIris />
           </div>

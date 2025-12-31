@@ -218,14 +218,14 @@ export function RecordingWithIris() {
   }, []);
 
   return (
-    <div className="relative flex h-screen w-full items-center justify-center bg-black overflow-hidden">
-
+    <div className="flex items-center justify-center bg-white dark:bg-black overflow-hidden">
+      
       {/* 背景Canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0 block" />
+      <canvas ref={canvasRef} className="absolute inset-0-x block" />
 
       {/* UIオーバーレイ */}
       <div className="relative z-10 flex flex-col items-center gap-8 pointer-events-none">
-
+        
         {/* ステータステキスト */}
         <AnimatePresence mode="wait">
           <motion.div
@@ -233,27 +233,27 @@ export function RecordingWithIris() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className={`text-xl tracking-[0.3em] font-bold ${isRecording ? "text-red-400" : "text-cyan-400"
-              }`}
+            className={`text-xl tracking-[0.3em] font-bold ${
+              isRecording ? "text-red-400" : "text-cyan-400"
+            }`}
+            onClick={() => setIsRecording(!isRecording)}
           >
-            {isRecording ? "● RECORDING ACTIVE" : "SYSTEM IDLE"}
+            {/* {isRecording ? "● RECORDING ACTIVE" : "SYSTEM IDLE"} */}
           </motion.div>
         </AnimatePresence>
 
         {/* 録音ボタン */}
         <button
           onClick={() => setIsRecording(!isRecording)}
-          className={`pointer-events-auto rounded-full border-2 px-10 py-4 text-sm tracking-widest transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-sm ${isRecording
+          className={`pointer-events-auto rounded-full border-2 px-6 py-2 text-sm tracking-widest transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-sm ${
+            isRecording
               ? "border-red-500 bg-red-950/30 text-red-300 shadow-[0_0_30px_rgba(239,68,68,0.4)]"
               : "border-cyan-500 bg-cyan-950/30 text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.2)] hover:bg-cyan-900/50"
-            }`}
+          }`}
         >
           {isRecording ? "STOP TRANSMISSION" : "INITIALIZE LINK"}
         </button>
       </div>
-
-      {/* 【修正4】背景が白く透けるのを防ぐため、黒背景の上にグラデーションを乗せる */}
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_30%,black_90%)]" />
     </div>
   );
 };
