@@ -180,7 +180,7 @@ export function RecordingWithIris({
 
           mediaRecorder.onstop = async () => {
             // 録音時間を計算（秒単位）
-            const durationMs = Date.now() - (recordingStartTimeRef.current || Date.now());
+            const durationMs = Date.now() - (recordingStartTimeRef.current as number | null as number);
             const durationSeconds = Math.round(durationMs / 1000);
             
             console.log('Recording stopped. Duration:', durationSeconds, 'seconds');
