@@ -162,7 +162,7 @@ export function Aside({isOpen, onToggle}: AsideProps) {
 
                         {/* Discussion一覧 */}
                         {!loading && !error && discussion && discussion.length > 0 && discussion.map((discuss) => (
-                            <div key={discuss.id} className="flex flex-col py-1 space-y-1">
+                            <div key={discuss.id} className="flex flex-col py-1 space-y-1 p-3">
                                 <button 
                                     className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition text-left"
                                     onClick={() => router.push(`/discus/${discuss.id}`)}
@@ -171,9 +171,9 @@ export function Aside({isOpen, onToggle}: AsideProps) {
                                         <div className="font-medium truncate">
                                             {discuss.title || '無題の相談'}
                                         </div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        {/* <div className="text-xs text-gray-500 dark:text-gray-400">
                                             {new Date(discuss.created_at).toLocaleDateString('ja-JP')}
-                                        </div>
+                                        </div> */}
                                     </div>
                                 </button>
                             </div>
