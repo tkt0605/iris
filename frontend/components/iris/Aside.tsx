@@ -1,36 +1,21 @@
 'use client';
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase";
-import { join } from "path";
-import { SubscriptionManager } from "framer-motion";
-import { data } from "framer-motion/client";
-import { datalist } from "framer-motion/m";
 interface AsideProps{
     isOpen: boolean;
     onToggle: () => void;   
 }
 export function Aside({isOpen, onToggle}: AsideProps) {
-    const pathname = usePathname();
     const router = useRouter();
     const supabase = createClient();
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [open, setOpen] = useState(false);
-    const [sideOpen, setSideOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const [opensearch, setOpensearch] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    // const [ discussion, setDiscussion ] = useState<Discussion[]>([]);
     const [discussion, setDiscussion] = useState<any[]>([]);
     const [openSearch, setOpenSearch] = useState<boolean>(false);
-    const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
     useEffect(() => {
-        const saved = localStorage.getItem("AsideOpenStorage");
-        if (saved !== null ){
-            setSideOpen(saved === "true");
-        }
         setMounted(true);
     }, []);
     useEffect(() => {
@@ -47,41 +32,44 @@ export function Aside({isOpen, onToggle}: AsideProps) {
         return () => subscription.unsubscribe();
     }, []);
 
+    // Discussions取得（ユーザーログイン後のみ実行）
     useEffect(() => {
-        const getDiscussion = async() => {
-            try{
+        // ユーザーがログインしていない場合は何もしない
+        if (!user?.id) {
+            setDiscussion([]);
+            return;
+        }
+
+        const getDiscussion = async () => {
+            try {
                 setLoading(true);
-                const { data, error } = await supabase.from("discussions")
-                .select('*')
-                .eq('user_id', user?.id);
-                if (error) throw error;
-                setLoading(false);
-                setDiscussion(data);
-                return data;
-            }catch(error){
-                setError("エラーが発生しました: " + (error instanceof Error ? error.message : String(error)))
-            }finally{
+                setError(null);
+
+                const { data, error } = await supabase
+                    .from("discussions")
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false }); // 新しい順にソート
+
+                if (error) {
+                    console.error('Discussion fetch error:', error);
+                    throw error;
+                }
+
+                console.log('Discussions fetched:', data);
+                setDiscussion(data || []);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                console.error('Error in getDiscussion:', errorMessage);
+                setError("相談の取得に失敗しました: " + errorMessage);
+                setDiscussion([]);
+            } finally {
                 setLoading(false);
             }
         };
+
         getDiscussion();
-        const { data: {subscription}} = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-            setLoading(false);
-        });
-        return () => subscription.unsubscribe();
-    })
-    const SidebarOpenAction = () => {
-        try {
-            setSideOpen( prev => {
-                const next = !prev;
-                localStorage.setItem('AsideOpenStorage', String(next));
-                return next;
-            });
-        } catch (error) {
-            console.error(error);
-        }
-    };
+    }, [user?.id, supabase]); // user.idが変わったときのみ実行
     return (
         // Aside.tsxでのソース
         // <aside className="hidden sm:flex flex-col fixed w-64 top-0 left-0 h-screen bg-gray-400/5 dark:bg-black p-2 gap-2 z-10 border-r border-gray-700/20">
@@ -141,20 +129,53 @@ export function Aside({isOpen, onToggle}: AsideProps) {
             {!isOpen &&
                 <div className="flex-1 overflow-y-auto min-h-0 py-1 space-y-1">
                     <div className="flex w-full items-center justify-start shrink-0">
-                        <h2 className="px-3 text-sm text-gray-900/50">あなたの相談</h2>
+                        <h2 className="px-3 text-sm text-gray-900/50 dark:text-gray-400">あなたの相談</h2>
                     </div>
-                    <div className="flex-1 overflow-y-auto min-h-0 py-1  space-y-1 scrollbar scrollbar-thumb-gray-400 scrollbar-track-transparent hover:scrollbar-thumb-gray-500">
-                        {discussion?.length === 0 && (
-                            <span className="px-3">履歴がありません。</span>
+                    <div className="flex-1 overflow-y-auto min-h-0 py-1 space-y-1 scrollbar scrollbar-thumb-gray-400 scrollbar-track-transparent hover:scrollbar-thumb-gray-500">
+                        {/* ローディング表示 */}
+                        {loading && (
+                            <div className="px-3 py-2 text-sm text-gray-500">
+                                読み込み中...
+                            </div>
                         )}
-                        {discussion.map((discuss) => (
-                            <div className="flex py-1 overflow-y-auto  space-y-1 ">
-                                <button className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition" onClick={() => router.push(`/discus/`)}>
-                                    相談内容を表示
+
+                        {/* エラー表示 */}
+                        {error && !loading && (
+                            <div className="px-3 py-2 text-sm text-red-500">
+                                {error}
+                            </div>
+                        )}
+
+                        {/* 未ログイン時 */}
+                        {!user && !loading && (
+                            <div className="px-3 py-2 text-sm text-gray-500">
+                                ログインしてください
+                            </div>
+                        )}
+
+                        {/* データなし */}
+                        {!loading && !error && user && discussion?.length === 0 && (
+                            <div className="px-3 py-2 text-sm text-gray-500">
+                                履歴がありません。
+                            </div>
+                        )}
+
+                        {/* Discussion一覧 */}
+                        {!loading && !error && discussion && discussion.length > 0 && discussion.map((discuss) => (
+                            <div key={discuss.id} className="flex flex-col py-1 space-y-1">
+                                <button 
+                                    className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition text-left"
+                                    onClick={() => router.push(`/discus/${discuss.id}`)}
+                                >
+                                    <div className="flex-1 truncate">
+                                        <div className="font-medium truncate">
+                                            {discuss.title || '無題の相談'}
+                                        </div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                                            {new Date(discuss.created_at).toLocaleDateString('ja-JP')}
+                                        </div>
+                                    </div>
                                 </button>
-                                <div className="flex items-center justify-between">
-                                    <button className="text-sm text-gray-500">{discuss?.id}</button>
-                                </div>
                             </div>
                         ))}
                     </div>

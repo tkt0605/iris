@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, use } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase";
 import { useRouter } from "next/navigation";
@@ -65,12 +65,15 @@ export function RecordingWithIris({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  
+  // 録音時間追跡用のRef
+  const recordingStartTimeRef = useRef<number | null>(null);
 
   // MotionValueを使って音量を管理（描画ループ内で使用）
   const audioLevel = useMotionValue(0);
 
   // 録音完了時の処理
-  const handleRecordingComplete = async (audioBlob: Blob) => {
+  const handleRecordingComplete = async (audioBlob: Blob, durationSeconds: number) => {
     try {
       // ユーザー認証チェック
       if (!user?.id) {
@@ -99,6 +102,8 @@ export function RecordingWithIris({
       }
 
       console.log('Upload successful:', uploadData);
+      console.log('File size:', audioBlob.size, 'bytes');
+      console.log('Duration:', durationSeconds, 'seconds');
 
       // 2. アップロード成功後、discussionレコードを作成
       const { data: discussData, error: discussError } = await supabase
@@ -106,7 +111,8 @@ export function RecordingWithIris({
         .insert({
           audio_file_path: uploadData.path,
           created_at: new Date().toISOString(),
-          user_id: user.id
+          user_id: user.id,
+          duration_seconds: durationSeconds // 実際の録音時間（秒）
         })
         .select()
         .single();
@@ -159,6 +165,11 @@ export function RecordingWithIris({
 
           // 実際の録音用のMediaRecorder
           audioChunksRef.current = [];
+          
+          // 録音開始時刻を記録
+          recordingStartTimeRef.current = Date.now();
+          console.log('Recording started at:', new Date(recordingStartTimeRef.current).toISOString());
+          
           const mediaRecorder = new MediaRecorder(stream);
           
           mediaRecorder.ondataavailable = (event) => {
@@ -168,11 +179,20 @@ export function RecordingWithIris({
           };
 
           mediaRecorder.onstop = async () => {
+            // 録音時間を計算（秒単位）
+            const durationMs = Date.now() - (recordingStartTimeRef.current || Date.now());
+            const durationSeconds = Math.round(durationMs / 1000);
+            
+            console.log('Recording stopped. Duration:', durationSeconds, 'seconds');
+            
             // 録音データをBlobに変換
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             
-            // 音声データを処理してページ遷移
-            await handleRecordingComplete(audioBlob);
+            // 音声データと録音時間を処理してページ遷移
+            await handleRecordingComplete(audioBlob, durationSeconds);
+            
+            // 録音開始時刻をリセット
+            recordingStartTimeRef.current = null;
           };
 
           mediaRecorder.start();
@@ -213,6 +233,9 @@ export function RecordingWithIris({
     handleAudio();
 
     return () => {
+      // クリーンアップ時に録音時間もリセット
+      recordingStartTimeRef.current = null;
+      
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
@@ -221,16 +244,6 @@ export function RecordingWithIris({
       }
     };
   }, [isRecording]);
-  useEffect(() => {
-    if (isDone){
-      let RecordingData = dataArrayRef.current as Uint8Array<ArrayBuffer>;
-      console.log("録音したデータ：",RecordingData);
-      console.log("録音が終了しました");
-      setIsDown(false);
-    }else{
-
-    }
-  })
   // 2. Canvas描画ループ
   useEffect(() => {
     const canvas = canvasRef.current;
