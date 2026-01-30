@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase";
 import { useRouter } from "next/navigation";
+import { convertSegmentPathToStaticExportFilename } from "next/dist/shared/lib/segment-cache/segment-value-encoding";
 // 設定パラメータ
 const CORE_PARTICLE_COUNT = 2000; // 中心の粒子数
 const CORE_RADIUS = 80; // 中心半径
@@ -168,8 +169,9 @@ export function RecordingWithIris({
           
           // 録音開始時刻を記録
           recordingStartTimeRef.current = Date.now();
+          const startNow = new Date(recordingStartTimeRef.current as number).getTime();
           console.log('Recording started at:', new Date(recordingStartTimeRef.current).toISOString());
-          
+          console.log('recordingStartTimeRef.current:', new Date(recordingStartTimeRef.current as number).getTime());          
           const mediaRecorder = new MediaRecorder(stream);
           
           mediaRecorder.ondataavailable = (event) => {
@@ -180,7 +182,12 @@ export function RecordingWithIris({
 
           mediaRecorder.onstop = async () => {
             // 録音時間を計算（秒単位）
-            const durationMs = Date.now() - (recordingStartTimeRef.current as number | null as number);
+            const stopNow = Date.now();
+            const Now = new Date(stopNow).getTime();
+            console.log("startNow:", startNow);
+            console.log("Now:", Now);
+            const durationMs = Number(Now) - Number(startNow);
+            console.log("durationMs:", durationMs);
             const durationSeconds = Math.round(durationMs / 1000);
             
             console.log('Recording stopped. Duration:', durationSeconds, 'seconds');
@@ -294,12 +301,12 @@ export function RecordingWithIris({
         for (let i = 0; i < dataArrayRef.current.length; i++) {
           sum += dataArrayRef.current[i];
         }
-        console.log("音声の周波数データの合計：",sum);
-        console.log("音声の周波数データの長さ：",dataArrayRef.current.length);
+        // console.log("音声の周波数データの合計：",sum);
+        // console.log("音声の周波数データの長さ：",dataArrayRef.current.length);
         const average = sum / dataArrayRef.current.length;
         // 感度調整: 30.0で割るとかなり敏感になります
         audioLevel.set(average / 30.0);
-        console.log("音声の周波数データの平均：",average);
+        // console.log("音声の周波数データの平均：",average);
       }
 
       const currentColor = isRecording ? BASE_COLOR_RED : BASE_COLOR_CYAN;
