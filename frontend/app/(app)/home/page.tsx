@@ -9,6 +9,7 @@ import { UnLoginHeader } from "@/components/iris/unloginHeader";
 import { ParticleTextReveal } from "@/components/iris/ParticleTextReveal";
 import { Aside } from "@/components/iris/Aside";
 import { RecordingWithIris } from "@/components/iris/RecordingWithIris";
+import { SampleWithIris } from "@/components/iris/sampleWithIris";
 import { createClient } from "@/utils/supabase";
 
 export default function HomePage() {
@@ -41,26 +42,16 @@ export default function HomePage() {
   return (
     <div className="flex flex-col justify-center h-full">
       <div>
-        {/* <div className="relative basis-auto shrink flex flex-col  max-sm:grow max-sm:justify-center">
-          <div className="flex items-center justify-center">
-            <div className="mb-7 hidden text-center sm:block">
-              <div className="relative inline-flex justify-center text-center text-2xl leading-9 font-semiblod">
-                <div>
-                  <h1 className="text-page-header inline-flex min-h-10.5 items-baseline whitespace-pre-wrap">
-                    今日は何をしましょうか？
-                  </h1>
-                </div>
-              </div>
+        <div className="pt-0">
+          <div className="flex flex-col items-center justify-center">
+            <div className="flex flex-col items-center justify-center">
+              <span className="text-3xl font-bold">{user?.email}</span>
+              <span className="text-3xl font-bold">球体を押して、話しかけてください。</span>
             </div>
-          </div>
-        </div> */}
-        <div className="pt-20">
-          <div className="flex items-center justify-center">
-            <RecordingWithIris />
+            <RecordingWithIris transparent={true} />
           </div>
         </div>
-      </div>
+      </div>  
     </div>
-
   );
 }

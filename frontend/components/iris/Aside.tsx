@@ -1,9 +1,12 @@
 'use client';
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/utils/supabase";
 import { join } from "path";
+import { SubscriptionManager } from "framer-motion";
+import { data } from "framer-motion/client";
+import { datalist } from "framer-motion/m";
 interface AsideProps{
     isOpen: boolean;
     onToggle: () => void;   
@@ -18,8 +21,9 @@ export function Aside({isOpen, onToggle}: AsideProps) {
     const [sideOpen, setSideOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [opensearch, setOpensearch] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     // const [ discussion, setDiscussion ] = useState<Discussion[]>([]);
-    const [discussion, setDiscussion] = useState([]);
+    const [discussion, setDiscussion] = useState<any[]>([]);
     const [openSearch, setOpenSearch] = useState<boolean>(false);
     const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
     useEffect(() => {
@@ -42,6 +46,31 @@ export function Aside({isOpen, onToggle}: AsideProps) {
         });
         return () => subscription.unsubscribe();
     }, []);
+
+    useEffect(() => {
+        const getDiscussion = async() => {
+            try{
+                setLoading(true);
+                const { data, error } = await supabase.from("discussions")
+                .select('*')
+                .eq('user_id', user?.id);
+                if (error) throw error;
+                setLoading(false);
+                setDiscussion(data);
+                return data;
+            }catch(error){
+                setError("エラーが発生しました: " + (error instanceof Error ? error.message : String(error)))
+            }finally{
+                setLoading(false);
+            }
+        };
+        getDiscussion();
+        const { data: {subscription}} = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+            setLoading(false);
+        });
+        return () => subscription.unsubscribe();
+    })
     const SidebarOpenAction = () => {
         try {
             setSideOpen( prev => {
@@ -123,13 +152,11 @@ export function Aside({isOpen, onToggle}: AsideProps) {
                                 <button className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition" onClick={() => router.push(`/discus/`)}>
                                     相談内容を表示
                                 </button>
+                                <div className="flex items-center justify-between">
+                                    <button className="text-sm text-gray-500">{discuss?.id}</button>
+                                </div>
                             </div>
                         ))}
-                        <div className="shrink-0">
-                            <div onClick={() => router.push('/')}>
-
-                            </div>
-                        </div>
                     </div>
                 </div>
             }

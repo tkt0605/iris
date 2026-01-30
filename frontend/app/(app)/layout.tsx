@@ -50,7 +50,8 @@ export default function IndexLayout({ children }: IndexLayoutProps) {
                 ${isSidebarOpen ? "md:pl-16" : "md:pl-64"}
                 `}
             >
-                <div className="w-full h-full overflow-y-auto no-scrollbar">
+                {/* <div className="w-full h-full overflow-y-auto no-scrollbar"> */}
+                <div>
                     {children}
                 </div>
             </main>

@@ -1,77 +1,269 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, scale } from "framer-motion";
-import { div } from "framer-motion/client";
-
+import React, { useState, useEffect, useRef, use } from "react";
+import { motion, useMotionValue, AnimatePresence } from "framer-motion";
+import { createClient } from "@/utils/supabase";
+import { useRouter } from "next/navigation";
 // 設定パラメータ
-const CORE_PARTICALE_COUNT = 2000; //中心の粒子数
+const CORE_PARTICLE_COUNT = 2000; // 中心の粒子数
 const CORE_RADIUS = 80; // 中心半径
-const ORBIT_COUNT = 5; // 周りの起動数
-//起動前の色
-const BASE_COLOR_CYAN = {
-  r: 34,
-  g: 211,
-  b: 238
-};
-//起動時の色
-const BASE_COLOR_RED = {
-  r: 248,
-  g: 113,
-  b: 113
-};
+const ORBIT_COUNT = 5; // 周りの軌道数
 
-export function RecordingWithIris() {
+// 待機時の色 (Cyan)
+const BASE_COLOR_CYAN = { r: 34, g: 211, b: 238 };
+// 録音時の色 (Red)
+const BASE_COLOR_RED = { r: 248, g: 113, b: 113 };
+
+interface RecordingWithIrisProps {
+  width?: number | string;      // 幅 (デフォルト: 600px)
+  height?: number | string;     // 高さ (デフォルト: 600px)
+  className?: string;           // 追加のクラス名
+  fullScreen?: boolean;         // 全画面表示モード
+  showUI?: boolean;             // UIオーバーレイの表示 (デフォルト: false)
+  showBackground?: boolean;     // 背景グラデーションの表示 (デフォルト: false)
+  rounded?: boolean;            // 角を丸くする (デフォルト: false)
+  shadow?: boolean;             // シャドウ効果 (デフォルト: false)
+  transparent?: boolean;        // 背景を透明にする (デフォルト: false)
+  onRecordingChange?: (isRecording: boolean) => void; // 録音状態変更コールバック
+}
+
+export function RecordingWithIris({ 
+  width = 450, 
+  height = 450, 
+  className = "",
+  fullScreen = false,
+  showUI = false,
+  showBackground = false,
+  rounded = false,
+  shadow = false,
+  transparent = false,
+  onRecordingChange
+}: RecordingWithIrisProps = {}) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [user, setUser] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isDone, setIsDown] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
-  const RecordingStateRef = useRef(isRecording);
-  //状態更新をrefに同期
+
+  // ユーザー情報取得
   useEffect(() => {
-    RecordingStateRef.current = isRecording;
+    const getUser = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+    };
+    getUser();
+  }, [supabase]);
+  
+  // 音声処理用のRef
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  
+  // 録音保存用のRef
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // MotionValueを使って音量を管理（描画ループ内で使用）
+  const audioLevel = useMotionValue(0);
+
+  // 録音完了時の処理
+  const handleRecordingComplete = async (audioBlob: Blob) => {
+    try {
+      // ユーザー認証チェック
+      if (!user?.id) {
+        alert('ログインが必要です');
+        router.push('/auth/login_signup');
+        return;
+      }
+
+      // 1. 音声ファイルをSupabase Storageにアップロード
+      // ユーザーIDをフォルダ名として使用（セキュリティポリシーに準拠）
+      const timestamp = Date.now();
+      const fileName = `${user.id}/recording_${timestamp}.webm`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('audio-recordings')
+        .upload(fileName, audioBlob, {
+          contentType: 'audio/webm',
+          upsert: false,
+          cacheControl: '3600' // 1時間キャッシュ
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        alert(`音声のアップロードに失敗しました: ${uploadError.message}`);
+        return;
+      }
+
+      console.log('Upload successful:', uploadData);
+
+      // 2. アップロード成功後、discussionレコードを作成
+      const { data: discussData, error: discussError } = await supabase
+        .from('discussions')
+        .insert({
+          audio_file_path: uploadData.path,
+          created_at: new Date().toISOString(),
+          user_id: user.id
+        })
+        .select()
+        .single();
+
+      if (discussError) {
+        console.error('Database error:', discussError);
+        alert(`データベースへの保存に失敗しました: ${discussError.message}`);
+        return;
+      }
+
+      console.log('Discussion created:', discussData);
+
+      // 3. 画面遷移
+      const discussId = discussData.id;
+      router.push(`/discus/${discussId}`);
+
+    } catch (error) {
+      console.error('Recording complete error:', error);
+      alert('処理中にエラーが発生しました');
+    }
+  };
+
+  // 録音状態の切り替えハンドラー
+  const handleToggleRecording = () => {
+    const newState = !isRecording;
+    setIsRecording(newState);
+    onRecordingChange?.(newState);
+  };
+
+  // 1. 録音開始・停止処理
+  useEffect(() => {
+    const handleAudio = async () => {
+      if (isRecording) {
+        try {
+          // マイクアクセス取得
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          streamRef.current = stream;
+
+          // 視覚化用のAudioContext
+          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 512;
+          const source = audioCtx.createMediaStreamSource(stream);
+          source.connect(analyser);
+
+          audioContextRef.current = audioCtx;
+          analyserRef.current = analyser;
+          dataArrayRef.current = new Uint8Array(analyser.frequencyBinCount) as Uint8Array<ArrayBuffer>;
+          sourceRef.current = source;
+
+          // 実際の録音用のMediaRecorder
+          audioChunksRef.current = [];
+          const mediaRecorder = new MediaRecorder(stream);
+          
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              audioChunksRef.current.push(event.data);
+            }
+          };
+
+          mediaRecorder.onstop = async () => {
+            // 録音データをBlobに変換
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            
+            // 音声データを処理してページ遷移
+            await handleRecordingComplete(audioBlob);
+          };
+
+          mediaRecorder.start();
+          mediaRecorderRef.current = mediaRecorder;
+
+        } catch (error) {
+          console.error("Microphone access denied:", error);
+          setIsRecording(false);
+        }
+      } else {
+        // 録音停止
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+          mediaRecorderRef.current.stop();
+        }
+
+        // ストリームを停止
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+
+        // 視覚化用のクリーンアップ
+        if (sourceRef.current) {
+          sourceRef.current.disconnect();
+          sourceRef.current = null;
+        }
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+          audioContextRef.current.close();
+          audioContextRef.current = null;
+        }
+        analyserRef.current = null;
+        dataArrayRef.current = null;
+        audioLevel.set(0);
+        setIsDown(true);
+      }
+    };
+
+    handleAudio();
+
+    return () => {
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
   }, [isRecording]);
+  useEffect(() => {
+    if (isDone){
+      let RecordingData = dataArrayRef.current as Uint8Array<ArrayBuffer>;
+      console.log("録音したデータ：",RecordingData);
+      console.log("録音が終了しました");
+      setIsDown(false);
+    }else{
+
+    }
+  })
+  // 2. Canvas描画ループ
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    //キャンバスサイズの設計
     const setSize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      // 親要素のサイズに合わせる
+      const parent = canvas.parentElement;
+      // 画面全体ではなく、親要素に合わせるので柔軟な設計
+      if (parent) {
+        canvas.width = parent.clientWidth;
+        canvas.height = parent.clientHeight;
+      }
     };
     setSize();
     window.addEventListener('resize', setSize);
 
     // 粒子データの初期化
-    // 1.中心核の粒子（フィボナッチ数列の応用）
-    const coreParticales: any[] = [];
+    const coreParticles: any[] = [];
     const phi = Math.PI * (3 - Math.sqrt(5));
-    for (let i = 0; i < CORE_PARTICALE_COUNT; i++) {
-      const y = 1 - (i / (CORE_PARTICALE_COUNT - 1)) * 2;
+    for (let i = 0; i < CORE_PARTICLE_COUNT; i++) {
+      const y = 1 - (i / (CORE_PARTICLE_COUNT - 1)) * 2;
       const radiusAtY = Math.sqrt(1 - y * y);
       const theta = phi * i;
       const x = Math.cos(theta) * radiusAtY;
       const z = Math.sin(theta) * radiusAtY;
-      coreParticales.push({
-        x: x * CORE_RADIUS,
-        y: y * CORE_RADIUS,
-        z: z * CORE_RADIUS,
+
+      // basePosには正規化された（半径1の）座標を入れておくと計算しやすいです
+      coreParticles.push({
         basePos: { x, y, z }
       });
-    }
-
-    // 2.軌道データ
-    const orbits: any[] = [];
-    for (let i = 0; i < ORBIT_COUNT; i++) {
-      orbits.push({
-        radius: CORE_RADIUS * (1.5 + i * 0.3), //半径をずらす
-        angle: Math.random() * Math.PI * 2,
-        speed: (Math.random() * 0.02 + 0.01) * (Math.random() < 0.5 ? 1 : -1), //ランダムな速さと方向
-        tiltX: Math.random() * Math.PI, // 起動の傾き
-        tiltY: Math.random() * Math.PI,
-        electronAngle: Math.random() * Math.PI * 2, // 電子の位置
-      })
     }
 
     // 描画ループ
@@ -81,13 +273,26 @@ export function RecordingWithIris() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
-      const recording = RecordingStateRef.current;
 
-      //現在の配色の決定（線形補間は複雑になるので、単純にする）
-      const currentColor = recording ? BASE_COLOR_RED : BASE_COLOR_CYAN;
+      // 音声データの取得
+      if (isRecording && analyserRef.current && dataArrayRef.current) {
+        analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+        let sum = 0;
+        for (let i = 0; i < dataArrayRef.current.length; i++) {
+          sum += dataArrayRef.current[i];
+        }
+        console.log("音声の周波数データの合計：",sum);
+        console.log("音声の周波数データの長さ：",dataArrayRef.current.length);
+        const average = sum / dataArrayRef.current.length;
+        // 感度調整: 30.0で割るとかなり敏感になります
+        audioLevel.set(average / 30.0);
+        console.log("音声の周波数データの平均：",average);
+      }
+
+      const currentColor = isRecording ? BASE_COLOR_RED : BASE_COLOR_CYAN;
       const colorStr = `rgb(${currentColor.r}, ${currentColor.g}, ${currentColor.b})`;
 
-      //3D投影の簡易ヘルパー
+      // 3D投影の簡易ヘルパー
       const project = (x: number, y: number, z: number) => {
         const scale = 300 / (300 + z);
         return {
@@ -97,162 +302,117 @@ export function RecordingWithIris() {
         };
       };
 
-      // A.中心核の描画
+      // --- A. 中心核の描画 ---
       ctx.fillStyle = colorStr;
-      coreParticales.forEach((p) => {
-        // 録音中は振動ノイズの追加
-        const vibration = recording ? (Math.random() - 0.5) * 15 : 0;
-        // 録音中は少々、膨張する。
-        const expansion = recording ? 1.2 : 1.0;
 
-        const px = p.basePos.x * CORE_RADIUS * expansion + vibration;
-        const py = p.basePos.y * CORE_RADIUS * expansion + vibration;
-        const pz = p.basePos.z * CORE_RADIUS * expansion + vibration;
+      // 録音中は回転停止、待機中はゆっくり回転
+      const rotSpeed = isRecording ? 0 : 0.002;
+      const currentRotation = time * rotSpeed;
 
-        // Y軸回転（ゆっくり自転）
-        const rotSpeed = recording ? 0.01 : 0.002;
-        const rotatedX = px * Math.cos(time * rotSpeed) - pz * Math.sin(time * rotSpeed);
-        const rotatedZ = px * Math.sin(time * rotSpeed) + pz * Math.cos(time * rotSpeed);
+      // 現在の音量レベルを取得
+      const currentLevel = audioLevel.get();
+
+      coreParticles.forEach((p) => {
+        // 振動の計算
+        // isRecording時のみ、音量(currentLevel)に応じてランダムに揺らす
+        // 感度係数 60 はかなり激しいです。お好みで 30〜80 くらいで調整してください。
+        const vibrationX = isRecording ? (Math.random() - 0.5) * (currentLevel * 35) : 0;
+        const vibrationY = isRecording ? (Math.random() - 0.5) * (currentLevel * 35) : 0;
+        const vibrationZ = isRecording ? (Math.random() - 0.5) * (currentLevel * 35) : 0;
+
+        // 膨張の計算
+        const expansion = isRecording ? 1.0 + (currentLevel * 0.1) : 1.0;
+
+        // 座標計算: (基本単位ベクトル * 半径 * 膨張) + 振動
+        const px = p.basePos.x * CORE_RADIUS * expansion + vibrationX;
+        const py = p.basePos.y * CORE_RADIUS * expansion + vibrationY;
+        const pz = p.basePos.z * CORE_RADIUS * expansion + vibrationZ;
+
+        // 回転行列の適用
+        const rotatedX = px * Math.cos(currentRotation) - pz * Math.sin(currentRotation);
+        const rotatedZ = px * Math.sin(currentRotation) + pz * Math.cos(currentRotation);
 
         const proj = project(rotatedX, py, rotatedZ);
-        // 奥にある粒子は小さく
+
+        // 描画
         const alpha = Math.max(0.1, proj.scale * 0.8);
         ctx.globalAlpha = alpha;
-        const size = recording ? 1.5 * proj.scale : 1 * proj.scale;
+
+        // 粒子サイズも音量で少し変化
+        const size = isRecording ? 1.5 * proj.scale : 1 * proj.scale;
+
         ctx.beginPath();
         ctx.arc(proj.x, proj.y, size, 0, Math.PI * 2);
         ctx.fill();
       });
       ctx.globalAlpha = 1.0;
 
-      // B.起動と電子の描画
-      orbits.forEach((o, i) => {
-        // 録音中は回転スピードアップと起動の拡大
-        const currentSpeed = recording ? o.speed * 3 : o.speed;
-        const currentRadius = recording ? o.radius * 1.1 : o.radius;
-
-        o.angle += currentSpeed;
-        o.electronAngle += currentSpeed * 1.5; //電子は少々、速く
-
-        ctx.beginPath();
-        ctx.strokeStyle = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, ${recording ? 0.4 : 0.2})`;
-        ctx.lineWidth = recording ? 1.5 : 0.8;
-
-        //起動のパスを描画（疑似3D円）
-        for (let j = 0; j <= 64; j++) {
-          const a = (j / 64) * Math.PI * 2;
-          //基本的な円の構造
-          let ox = Math.cos(a) * currentRadius;
-          let oz = Math.sin(a) * currentRadius;
-          let oy = 0;
-
-          //軌道を傾ける回転処理
-          let tx = ox;
-          let ty = oy * Math.cos(o.tiltX) - oz * Math.sin(o.tiltX);
-          let tz = oy * Math.sin(o.tiltX) + oz * Math.cos(o.tiltX);
-          ox = tx;
-          oy = ty;
-          oz = tz;
-
-          tx = ox * Math.cos(o.tiltY) + oz * Math.sin(o.tiltY);
-          ty = oy;
-          tz = -ox * Math.sin(o.tiltY) + oz * Math.cos(o.tiltY);
-
-          ox = tx;
-          oy = ty;
-          oz = tz;
-
-          const proj = project(ox, oy, oz);
-          if (j === 0) ctx.moveTo(proj.x, proj.y);
-          else ctx.lineTo(proj.x, proj.y);
-        }
-
-        ctx.stroke();
-
-        // 電子（軌道上の発光体）を描画
-        let ex = Math.cos(o.electronAngle) * currentRadius;
-        let ez = Math.sin(o.electronAngle) * currentRadius;
-        let ey = 0;
-        // 軌道と同じ傾きを適応
-        let tx = ex;
-        let ty = ey * Math.cos(o.tiltX) - ez * Math.sin(o.tiltX);
-        let tz = ey * Math.sin(o.tiltX) + ez * Math.cos(o.tiltX);
-        ex = tx;
-        ey = ty;
-        ez = tz;
-
-        tx = ex * Math.cos(o.tiltY) + ez * Math.sin(o.tiltY);
-        ty = ey;
-        tz = -ex * Math.sin(o.tiltY) + ez * Math.cos(o.tiltY);
-
-        ex = tx;
-        ey = ty;
-        ez = tz;
-
-        const eProj = project(ex, ey, ez);
-        // 電子本体
-        ctx.fillStyle = colorStr;
-        ctx.beginPath();
-        ctx.arc(eProj.x, eProj.y, 4 * eProj.scale, 0, Math.PI * 2);
-        ctx.fill();
-        //電子の輝き（グロー効果）
-        ctx.beginPath();
-        const gradient = ctx.createRadialGradient(
-          eProj.x, eProj.y, 0, eProj.x, eProj.y, 15 * eProj.scale
-        );
-        gradient.addColorStop(0, `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, 0.8)`);
-        gradient.addColorStop(1, `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, 0)`);
-        ctx.fillStyle = gradient;
-        ctx.arc(eProj.x, eProj.y, 15 * eProj.scale, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      //ループ継続
+      // ループ継続
       animationRef.current = requestAnimationFrame(render);
     };
+
     render();
-    //クリーンアップ
+
     return () => {
       window.removeEventListener('resize', setSize);
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, []);
+  }, [isRecording]); // isRecordingが変わったら描画ループを再初期化
+
+  // サイズの計算
+  const sizeStyle = fullScreen 
+    ? { width: '100vw', height: '100vh' }
+    : { 
+        width: typeof width === 'number' ? `${width}px` : width,
+        height: typeof height === 'number' ? `${height}px` : height
+      };
+
+  // スタイルクラスの構築
+  const containerClasses = [
+    'relative',
+    rounded ? 'rounded-2xl' : '',
+    'overflow-hidden',
+    shadow ? 'shadow-2xl' : '',
+    fullScreen ? 'w-full h-full' : ''
+  ].filter(Boolean).join(' ');
+
+  const canvasClasses = [
+    'absolute inset-0 w-full h-full block cursor-pointer',
+    transparent ? 'bg-transparent' : showBackground ? 'bg-gradient-to-br from-gray-900 to-black' : 'bg-black'
+  ].filter(Boolean).join(' ');
 
   return (
-    <div className="flex items-center justify-center bg-white dark:bg-black overflow-hidden">
-      
-      {/* 背景Canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0-x block" />
-
-      {/* UIオーバーレイ */}
-      <div className="relative z-10 flex flex-col items-center gap-8 pointer-events-none">
+    <div className={`relative flex items-center justify-center ${fullScreen ? 'h-screen w-full' : ''} ${className}`}>
+      {/* Canvasコンテナ */}
+      <div 
+        className={containerClasses}
+        style={!fullScreen ? sizeStyle : undefined}
+      >
+        {/* 背景Canvas - 球体のみ */}
+        <canvas
+          ref={canvasRef}
+          className={canvasClasses}
+          onClick={handleToggleRecording}
+        />
         
-        {/* ステータステキスト */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={isRecording ? "rec" : "idle"}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className={`text-xl tracking-[0.3em] font-bold ${
-              isRecording ? "text-red-400" : "text-cyan-400"
-            }`}
-            onClick={() => setIsRecording(!isRecording)}
-          >
-            {/* {isRecording ? "● RECORDING ACTIVE" : "SYSTEM IDLE"} */}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* 録音ボタン */}
-        <button
-          onClick={() => setIsRecording(!isRecording)}
-          className={`pointer-events-auto rounded-full border-2 px-6 py-2 text-sm tracking-widest transition-all duration-300 hover:scale-105 active:scale-95 backdrop-blur-sm ${
-            isRecording
-              ? "border-red-500 bg-red-950/30 text-red-300 shadow-[0_0_30px_rgba(239,68,68,0.4)]"
-              : "border-cyan-500 bg-cyan-950/30 text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.2)] hover:bg-cyan-900/50"
-          }`}
-        >
-          {isRecording ? "STOP TRANSMISSION" : "INITIALIZE LINK"}
-        </button>
+        {/* UIオーバーレイ - showUIがtrueの場合のみ表示 */}
+        {showUI && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={isRecording ? "rec" : "idle"}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={`text-xl tracking-[0.1em] font-bold ${
+                  isRecording ? "text-red-400" : "text-cyan-400"
+                }`}
+              >
+                {isRecording ? "● LISTENING" : "SYSTEM IDLE"}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     </div>
   );

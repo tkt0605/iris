@@ -65,7 +65,7 @@ export function RecordingWithIris(){
     const orbits: any[] = [];
     for (let i =0; i < ORBIT_COUNT; i++){
       orbits.push({
-        radius: CORE_RADIUS * (1.5 + i * 0.3), //半径をずらす
+        radius: CORE_RADIUS * (  0.8 + i * 0.3), //半径をずらす
         angle: Math.random() * Math.PI * 2,
         speed: (Math.random() * 0.02 + 0.01) * (Math.random() < 0.5 ? 1 : -1), //ランダムな速さと方向
         tiltX: Math.random() * Math.PI, // 起動の傾き
