@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useEffectEvent } from "react";
 import { Header } from "@/components/iris/Header";
 import { Aside } from "@/components/iris/Aside";
+import { RecordingWithIris } from "@/components/iris/RecordingWithIris";
+
 
 interface IndexLayoutProps {
     children: React.ReactNode
@@ -10,10 +12,11 @@ interface IndexLayoutProps {
 export default function IndexLayout({ children }: IndexLayoutProps) {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [isNowRecord, setIsNowRecord] = useState(false);
     useEffect(() => {
         const saved = localStorage.getItem('AsideOpenStorage');
         console.log(saved);
-        if (saved !== null){
+        if (saved !== null) {
             setSidebarOpen(saved === "true");
         }
         setMounted(true);
@@ -28,24 +31,25 @@ export default function IndexLayout({ children }: IndexLayoutProps) {
             <div className={`
                 fixed top-0 left-0 h-full z-40
                 ${mounted ? 'duration-300' : 'duration-300'}
-                ${isSidebarOpen ? "w-16" : "w-60" }
+                ${isSidebarOpen ? "w-16" : "w-60"}
             `}>
-                 {/* {!isOpen && <Aside />} */}
-                 <Aside isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+                {/* {!isOpen && <Aside />} */}
+                <Aside isOpen={isSidebarOpen} onToggle={toggleSidebar} />
             </div>
             <div className="fixed top-0 left-0 w-full h-14 z-30 pointer-events-none">
-                <Header isSideOpen={isSidebarOpen}/>
+                    <Header isSideOpen={isSidebarOpen}/>
             </div>
-            {/* <main 
-                className="w-full h-full pt-14 md:pl-60 transition-all duration-300"
-            > */}
-            {/* <main className={[
-                "w-full h-full pt-14 transition-all duration-300",
-                isOpen ? "md:pl-12" : "md:pl-60"
-            ].join('')}> */}
-            <main 
+
+            {/* <div className={`
+                relative top-0
+                ${mounted ? "duration-300" : "duration-300"}
+                ${isSidebarOpen ? "md:left-16" : "md:left-64"}
+            `}>
+                <RecordingWithIris transparent={true} onClick={() => setIsNowRecord(true)} />
+            </div> */}
+            <main
                 className={`
-                w-full h-full pt-14 transition-all 
+                w-full h-full transition-all
                 ${mounted ? "duration-300" : "duration-300"}
                 ${isSidebarOpen ? "md:pl-16" : "md:pl-64"}
                 `}

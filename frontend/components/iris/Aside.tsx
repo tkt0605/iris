@@ -71,13 +71,6 @@ export function Aside({isOpen, onToggle}: AsideProps) {
         getDiscussion();
     }, [user?.id, supabase]); // user.idが変わったときのみ実行
     return (
-        // Aside.tsxでのソース
-        // <aside className="hidden sm:flex flex-col fixed w-64 top-0 left-0 h-screen bg-gray-400/5 dark:bg-black p-2 gap-2 z-10 border-r border-gray-700/20">
-    
-        // <aside className={[
-        //     "sm:flex flex-col fixed top-0 left-0 h-screen bg-gray-400/5 dark:bg-black gap-2 z-10 ",
-        //     isOpen ? "w-16 duration-500 border-r border-gray-700/20" : "w-60 duration-500 border-r border-gray-700/20"
-        // ].join('')}>
         <aside className={`
             hidden sm:flex flex-col fixed top-0 left-0 h-screen bg-gray-400/5 dark:bg-black gap-2 z-10 border-r border-gray-700/20
             ${mounted ? "duration-300" : ""}
@@ -182,11 +175,11 @@ export function Aside({isOpen, onToggle}: AsideProps) {
                 </div>
             }
             <div className="shrink-0 mt-auto p-2 border-t border-gray-700/20">
-                <div className="cursor-pointer p-2 rounded-lg  hover:bg-black/5  gap-2 flex items-center justify-center">
+                <div className="cursor-pointer p-2 rounded-lg  hover:bg-black/5  gap-2 flex items-center justify-left">
                     <button className="p-2 rounded-full bg-gray-700/20 duration-200 shadow-sm backdrop-blur-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-person" viewBox="0 0 16 16"> <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z" /> </svg>
                     </button>
-                    {!isOpen && <div className="text-sm text-gray-500">{user?.email}</div>}
+                    {!isOpen && <div className="text-sm text-gray-500">{user?.user_metadata?.name}</div>}
                 </div>
             </div>
         </aside>

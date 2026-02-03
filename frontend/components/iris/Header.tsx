@@ -47,7 +47,7 @@ export function Header({isSideOpen}: HeaderProps) {
         // ].join('')}>
         <header
             className={`
-                fixed top-0 bg-transparent inset-x-0 h-14 z-50 border-b border-gray-700/20
+                fixed top-0 bg-transparent inset-x-0 h-14 z-50
                 ${mounted ? "duration-300" : "duration-300"} 
                 ${isSideOpen ? "md:left-16" : "md:left-64"}
             `} 

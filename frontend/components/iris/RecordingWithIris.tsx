@@ -4,9 +4,10 @@ import { motion, useMotionValue, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase";
 import { useRouter } from "next/navigation";
 import { convertSegmentPathToStaticExportFilename } from "next/dist/shared/lib/segment-cache/segment-value-encoding";
+import { div } from "framer-motion/client";
 // 設定パラメータ
-const CORE_PARTICLE_COUNT = 2000; // 中心の粒子数
-const CORE_RADIUS = 80; // 中心半径
+const CORE_PARTICLE_COUNT = 1500; // 中心の粒子数
+const CORE_RADIUS = 60; // 中心半径
 const ORBIT_COUNT = 5; // 周りの軌道数
 
 // 待機時の色 (Cyan)
@@ -25,11 +26,12 @@ interface RecordingWithIrisProps {
   shadow?: boolean;             // シャドウ効果 (デフォルト: false)
   transparent?: boolean;        // 背景を透明にする (デフォルト: false)
   onRecordingChange?: (isRecording: boolean) => void; // 録音状態変更コールバック
+  onClick?: () => void;
 }
 
 export function RecordingWithIris({ 
-  width = 450, 
-  height = 450, 
+  width = 400, 
+  height = 400, 
   className = "",
   fullScreen = false,
   showUI = false,
@@ -155,7 +157,8 @@ export function RecordingWithIris({
           // 視覚化用のAudioContext
           const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
           const analyser = audioCtx.createAnalyser();
-          analyser.fftSize = 512;
+          // analyser.fftSize = 512;
+          analyser.fftSize = 256;
           const source = audioCtx.createMediaStreamSource(stream);
           source.connect(analyser);
 
@@ -402,7 +405,9 @@ export function RecordingWithIris({
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={`relative flex items-center justify-center ${fullScreen ? 'h-screen w-full' : ''} ${className}`}>
+    // <div className={`relative flex items-center justify-center ${fullScreen ? 'h-screen w-full' : ''} ${className}`}>
+    // <div className="relative flex items-center">
+    <div className={`relative flex items-center ${fullScreen ? 'h-screen w-full' : ''} ${className}`}>
       {/* Canvasコンテナ */}
       <div 
         className={containerClasses}
