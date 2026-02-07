@@ -74,7 +74,7 @@ export function Aside({isOpen, onToggle}: AsideProps) {
         <aside className={`
             hidden sm:flex flex-col fixed top-0 left-0 h-screen bg-gray-400/5 dark:bg-black gap-2 z-10 border-r border-gray-700/20
             ${mounted ? "duration-300" : ""}
-            ${isOpen ? "w-16" : "w-64"}
+            ${isOpen ? "w-16" : "w-60"}
         `}>
             <nav className="shrink-0 space-y-1 z-10">
                 <div className={[

@@ -1,0 +1,23 @@
+{
+    "name": "Iris Backend Development Conatiner",
+    "dockerComposeFile": [
+        "../backend/docker/docker-compose.yml"
+    ],
+    "service": "backend",
+    "workspaceFolder": "/app",
+    "customizations": {
+        "vscdoe": {
+            "settings": {
+                "python.defaultInterpreterPath": "/home/appuser/.local/bin/python",
+                "python.languageServer": "pylance"
+            },
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "njpwerner.autodocstring",
+                "tamasfe.even-better-toml"
+            ]
+        }
+    },
+    "remoteUser": "appuser"
+}

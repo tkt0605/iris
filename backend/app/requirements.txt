@@ -1,0 +1,18 @@
+## requirements.txt
+# Web Core
+fastapi
+uvicorn
+pydantic-settings
+python-dotenv
+python-multipart
+# DB & Auth
+supabase
+gotrue 
+PyJWT
+# --- Communication (Bridge to WebGPU) ---
+# JS側のWebGPUエンドポイントを叩くための非同期HTTPクライアント
+httpx
+# ヘルスチェック用（Dockerコンテナのヘルスチェックに使用）
+requests
+# Log
+loguru

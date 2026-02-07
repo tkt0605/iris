@@ -40,6 +40,7 @@ export default function DiscussPage({ params }: { params: { id: string } }) {
 
     return (
         <div className="flex items-start gap-16 md:p-10 w-full h-full">
+        {/* <div className="relative z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16 w-full max-w-7xl px-6 py-8"> */}
             {/* ここに音声文字起こしの内容を表示 */}
             <div className="shrink-0">
                 <RecordingWithIris transparent={true} onClick={() => setIsNowRecord(true)} />

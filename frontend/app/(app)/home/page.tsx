@@ -16,19 +16,19 @@ export default function HomePage() {
   // Auth（簡易）
   const supabase = createClient();
   const [user, setUser] = useState<any>(null);
-  const [isNowRecord, setIsNowRecord] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isOpen, setIsOpen] = useState(false);
+  const [dimensions, setDimensions] = useState(
+    {width: 0, height: 0}
+  );
+  const [isNowRecord, setIsNowRecord] = useState(false);
+  // const [isOpen, setIsOpen] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
-  
-  const JampTopage = () => {
-    if (user) {
-      return router.push('/home');
-    } else {
-      return router.push('/auth/login_signup');
-    }
-  };
-  
+  useEffect(() => {
+    setDimensions({
+      width: window.innerWidth,
+      height: window.innerHeight,
+    })
+  }, []);
   useEffect(() => {
     const getAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -70,7 +70,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="relative flex items-center justify-center w-full h-full md:overflow-hidden overflow-y-auto  pt-10 pb-10">
+    <div className="relative flex items-center justify-center md:overflow-hidden overflow-y-auto  pt-10 pb-10">
       {/* 背景グラデーション - 白ベース */}
       <div className="absolute inset-0 bg-white" />
       
@@ -103,7 +103,6 @@ export default function HomePage() {
 
       {/* メインコンテンツエリア */}
       <div className="relative z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16 w-full max-w-7xl px-6 py-8">
-        
         {/* 左側: 球体エリア - より大きく、中央配置 */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
@@ -249,11 +248,11 @@ export default function HomePage() {
             key={i}
             className="absolute w-1 h-1 bg-cyan-500/20 rounded-full"
             initial={{
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
+              x: Math.random() * dimensions.width,
+              y: Math.random() * dimensions.height,
             }}
             animate={{
-              y: [null, Math.random() * window.innerHeight],
+              y: [null, Math.random() * dimensions.height],
               opacity: [0, 1, 0],
             }}
             transition={{

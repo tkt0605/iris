@@ -49,13 +49,13 @@ export default function IndexLayout({ children }: IndexLayoutProps) {
             </div> */}
             <main
                 className={`
-                w-full h-full transition-all
+                 transition-all
                 ${mounted ? "duration-300" : "duration-300"}
-                ${isSidebarOpen ? "md:pl-16" : "md:pl-64"}
+                ${isSidebarOpen ? "md:pl-16" : "md:pl-60"}
                 `}
             >
                 {/* <div className="w-full h-full overflow-y-auto no-scrollbar"> */}
-                <div>
+                <div className="w-full h-full overflow-y-auto no-scrollbar">
                     {children}
                 </div>
             </main>
