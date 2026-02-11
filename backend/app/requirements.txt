@@ -1,18 +1,23 @@
 ## requirements.txt
 # Web Core
-fastapi
-uvicorn
-pydantic-settings
-python-dotenv
-python-multipart
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic-settings>=2.6.0
+python-dotenv>=1.0.0
+python-multipart>=0.0.12
+
+# パフォーマンス向上（uvloop: 高速イベントループ, httptools: 高速HTTPパーサー）
+uvloop>=0.21.0
+httptools>=0.6.0
+
 # DB & Auth
-supabase
-gotrue 
-PyJWT
+supabase>=2.10.0
+gotrue>=2.10.0
+PyJWT>=2.10.0
+
 # --- Communication (Bridge to WebGPU) ---
 # JS側のWebGPUエンドポイントを叩くための非同期HTTPクライアント
-httpx
-# ヘルスチェック用（Dockerコンテナのヘルスチェックに使用）
-requests
+httpx>=0.28.0
+
 # Log
-loguru
+loguru>=0.7.0

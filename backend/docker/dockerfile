@@ -1,33 +1,33 @@
+## ビルダーイメージの指定
+FROM python:3.12-slim AS builder
 
-from python:3.12-slim as builder
-run apt-get update && apt-get install -y --no-install-recommends gcc \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+	build-essential \
+	&& rm -rf /var/lib/apt/lists/*
 
-run pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -U pip
 
-workdir /build
-copy app/requirements.txt .
-run pip install --no-cache-dir --prefix=/install -r requirements.txt
+WORKDIR /build
+COPY /app/requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
+## ベースイメージの指定
+FROM python:3.12-slim
+ARG USERNAME=appuser
+RUN useradd -ms /bin/bash $USERNAME \
+    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-from python:3.12-slim
-run groupadd -r appuser && useradd -r -g appuser -m -s /bin/bash appuser
-workdir /app
-run mkdir -p /home/appuser/.cursor-server /home/appuser/.local \
-    && chown -R appuser:appuser /home/appuser /app
+WORKDIR /home/$USERNAME/app
+COPY --from=builder /install /usr/local
+COPY --chown=$USERNAME:$USERNAME app/ .
 
-copy --from=builder /install /usr/local
-copy --chown=appuser:appuser /app .
-env PATH=/home/appuser/.local/bin:$PATH
-env PYTHONUNBUFFERED=1
-env PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-expose 8080
+EXPOSE 8080
+USER $USERNAME
 
-user appuser
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD pytohn -c "import urllib.request; urllib.request.get('http://localhost:8080/health', timeout=5)"
 
-healthcheck --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD python -c "import urllib.requests; urllib.requests.get('http://localhost:8080/health', timeout=5)"
-
-cmd ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

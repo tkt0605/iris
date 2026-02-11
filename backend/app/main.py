@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+from core.config import settings
 
-app = FastAPI(title="Iris Backend API")
-
+app = FastAPI(title=settings.PROJECT_NAME)
 # CORS設定
 app.add_middleware(
     CORSMiddleware,
@@ -21,3 +22,8 @@ async def health_check():
 async def root():
     """ルートエンドポイント"""
     return {"message": "Welcome to Iris Backend API"}
+
+@app.get("/test-openai")
+def test_openai():
+    # settingsから、OPENAI_API_KEYを取得
+    return {"key_prefox": settings.OPENAI_API_KEY[:5]}.

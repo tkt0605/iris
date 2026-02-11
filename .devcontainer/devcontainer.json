@@ -6,18 +6,35 @@
     "service": "backend",
     "workspaceFolder": "/app",
     "customizations": {
-        "vscdoe": {
+        "vscode": {
             "settings": {
-                "python.defaultInterpreterPath": "/home/appuser/.local/bin/python",
-                "python.languageServer": "pylance"
+                "python.PythonPath": "/usr/local/bin/python3",
+                "python.formatting.provider": "black",
+                "python.linting.enabled": true,
+                "python.linting.flake8Enabled": true,
+                "python.linting.mypyEnabled": true,
+                "python.analysis.typeCheckingMode": "basic",
+                "editor.formatOnSave": true,
+                "editor.codeActionsOnSave": {
+                    "source.organizeImports": true
+                },
+                "terminal.integrated.defaultProfile.linux": "/bin/bash"
             },
             "extensions": [
                 "ms-python.python",
+                "ms-azuretools.vscode-docker",
                 "ms-python.vscode-pylance",
                 "njpwerner.autodocstring",
                 "tamasfe.even-better-toml"
+            ],
+            "postCreateCommand": "pip install -r ../backend/app/requirements.txt",
+            "mounts": [
+                "source=${localWorkspaceFolder},target=/workspace,type=bind"
             ]
         }
     },
-    "remoteUser": "appuser"
+    "remoteUser": "appuser",
+    "remoteEnv": {
+        "PYTHONPATH": "../backend"
+    }
 }
