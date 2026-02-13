@@ -26,4 +26,4 @@ async def root():
 @app.get("/test-openai")
 def test_openai():
     # settingsから、OPENAI_API_KEYを取得
-    return {"key_prefox": settings.OPENAI_API_KEY[:5]}.
+    return {"key_prefox": settings.OPENAI_API_KEY[:5]}

@@ -3,27 +3,38 @@ services:
     build:
       context: ..
       dockerfile: docker/dockerfile
+    image: iris-backend:latest
     container_name: iris-backend
+
+    # リソース制限
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+    # DNS設定（WSL2等での名前解決問題対策）
     dns:
-     - "8.8.8.8"
-     - "8.8.4.4"
+      - 8.8.8.8
+      - 8.8.4.4
+
+    # ボリューム
     volumes:
       - ../app:/app
+
     ports:
       - "8080:8080"
+
     environment:
-      # 環境変数（本番環境では.envファイルや環境変数から読み込み）
-      - ENVIRONMENT=development
-      - LOG_LEVEL=info
+      ENVIRONMENT: development
+      LOG_LEVEL: info
+
     env_file:
-      - .env  # 必要に応じてコメント解除
+      - .env
+
     restart: unless-stopped
-    # healthcheck:
-    #   test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8080/health', timeout=5)"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 3
-    #   start_period: 5s
+
     networks:
       - iris-network
 

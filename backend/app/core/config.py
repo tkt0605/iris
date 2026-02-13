@@ -1,9 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    OPENAI_API_KEY: str
-    SUPABASE_URL: str
-    SUPABASE_KEY: str
+    OPENAI_API_KEY: str = "Something"
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
 
     PROJECT_NAME: str = "I.R.I.S Backend API"
 

@@ -1,40 +1,51 @@
 {
-    "name": "Iris Backend Development Conatiner",
-    "dockerComposeFile": [
-        "../backend/docker/docker-compose.yml"
-    ],
-    "service": "backend",
-    "workspaceFolder": "/app",
-    "customizations": {
-        "vscode": {
-            "settings": {
-                "python.PythonPath": "/usr/local/bin/python3",
-                "python.formatting.provider": "black",
-                "python.linting.enabled": true,
-                "python.linting.flake8Enabled": true,
-                "python.linting.mypyEnabled": true,
-                "python.analysis.typeCheckingMode": "basic",
-                "editor.formatOnSave": true,
-                "editor.codeActionsOnSave": {
-                    "source.organizeImports": true
-                },
-                "terminal.integrated.defaultProfile.linux": "/bin/bash"
-            },
-            "extensions": [
-                "ms-python.python",
-                "ms-azuretools.vscode-docker",
-                "ms-python.vscode-pylance",
-                "njpwerner.autodocstring",
-                "tamasfe.even-better-toml"
-            ],
-            "postCreateCommand": "pip install -r ../backend/app/requirements.txt",
-            "mounts": [
-                "source=${localWorkspaceFolder},target=/workspace,type=bind"
-            ]
-        }
-    },
-    "remoteUser": "appuser",
-    "remoteEnv": {
-        "PYTHONPATH": "../backend"
+  "name": "Iris Backend Development",
+  "dockerComposeFile": [
+    "${localWorkspaceFolder}/backend/docker/docker-compose.yml",
+    "${localWorkspaceFolder}/backend/docker/docker-compose.devcontainer.yml"
+  ],
+  "service": "backend",
+  "workspaceFolder": "/app",
+  "remoteUser": "appuser",
+
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "Backend API",
+      "onAutoForward": "notify"
     }
+  },
+
+  "containerEnv": {
+    "PYTHONPATH": "/app"
+  },
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.typeCheckingMode": "basic",
+        "python.formatting.provider": "black",
+        "python.linting.enabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.linting.mypyEnabled": true,
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true
+        },
+        "terminal.integrated.defaultProfile.linux": "bash"
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-azuretools.vscode-docker",
+        "njpwerner.autodocstring",
+        "tamasfe.even-better-toml"
+      ]
+    }
+  },
+
+  "postCreateCommand": "pip install --no-cache-dir black flake8 mypy 2>/dev/null || true",
+  "postStartCommand": "echo 'Backend API: http://localhost:8080'"
 }

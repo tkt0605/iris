@@ -1,3 +1,6 @@
+# Docker関連（ビルドコンテキストから除外）
+docker/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -28,7 +31,7 @@ ENV/
 htmlcov/
 *.cover
 
-# 環境変数（本番環境では別途管理）
+# 環境変数
 .env
 .env.local
 .env.*.local
@@ -44,12 +47,3 @@ Thumbs.db
 .git/
 .gitignore
 .gitattributes
-
-# ドキュメント
-*.md
-docs/
-
-# その他
-.dockerignore
-Dockerfile
-docker-compose*.yml
