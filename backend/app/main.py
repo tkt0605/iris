@@ -27,3 +27,6 @@ async def root():
 def test_openai():
     # settingsから、OPENAI_API_KEYを取得
     return {"key_prefox": settings.OPENAI_API_KEY[:5]}
+@app.get('/save_note')
+def save_note(note: str):
+    return {"message": "Note保存成功"}

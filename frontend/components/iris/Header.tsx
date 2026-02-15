@@ -3,11 +3,23 @@ import React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase";
+import { useParams } from "next/navigation";
 interface HeaderProps{
     isSideOpen: boolean;
 }
+type Conversation = {
+    id: string;
+    title: string;
+    created_at: string;
+    is_activate: boolean;
+}
 export function Header({isSideOpen}: HeaderProps) {
     const router = useRouter();
+    const params = useParams();
+    const conversationId = params.id as string;
+    console.log(conversationId);
+    // const [conversation, setConversation] = useState<Conversation[]>([]);
+    const [conversation, setConversation] = useState<any>(null);
     const supabase = createClient();
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -40,19 +52,36 @@ export function Header({isSideOpen}: HeaderProps) {
         });
         return () => subscription.unsubscribe();
     }, []);
+    useEffect(() => {
+        if (!conversationId) return;
+        const fetchConversation = async () => {
+            try {
+                const { data, error} = await supabase
+                .from('conversations')
+                .select('*')
+                .eq('id', conversationId)
+                .single();
+                if (data) setConversation(data);
+            } catch (error) {
+                console.error('Conversation fetch error:', error);
+                throw error;
+            }
+        };
+        fetchConversation();
+    }, [conversationId]);
     return (
-        // <header className={[
-        //     "fixed top-0 bg-transparent  inset-x-0 h-14 z-50",
-        //     sideOpen ? "md:left-16 duration-300 border-b border-gray-700/20" : "md:left-60 duration-300 border-b border-gray-700/20"
-        // ].join('')}>
         <header
             className={`
-                fixed top-0 bg-transparent inset-x-0 h-14 z-50
+                fixed top-0 bg-transparent inset-x-0 h-14 z-50  border-b border-gray-700/20
                 ${mounted ? "duration-300" : "duration-300"} 
-                ${isSideOpen ? "md:left-16" : "md:left-64"}
+                ${isSideOpen ? "md:left-16" : "md:left-60"}
             `} 
         >
             <div className="max-w-9wl mx-auto h-full px-6 sm:px-2 flex items-center justify-center gap-3">
+                <div className="flex items-center justify-center">
+
+                    <h1 className="text-2xl font-bold">{conversation?.title}</h1>
+                </div>
                 <div className="flex items-center justify-between">
                     <div className="md:hidden">
                         <button onClick={() => router.push('')} className="text-gray-700 hover:text-white rounded-xl hover:bg-white/10 p-2 duration-300">
@@ -104,34 +133,3 @@ export function Header({isSideOpen}: HeaderProps) {
         </header>
     );
 }
-// import React from 'react';
-// import { useRouter } from 'next/navigation';
-
-// // 必要なPropsがあれば追加してください
-// export  function Header() {
-//     const router = useRouter();
-
-//     return (
-//         <header className="w-full h-full flex items-center justify-between px-4 border-b border-gray-700/20 bg-white/80 dark:bg-black/80 backdrop-blur-md">
-            
-//             {/* 左側コンテンツ */}
-//             <div className="flex items-center">
-//                  {/* モバイル用のハンバーガーメニューが必要ならここに配置 */}
-//                  <div className="md:hidden mr-4">
-//                     <button>Menu</button>
-//                  </div>
-//                  <h1 className="font-semibold text-sm">Dashboard</h1>
-//             </div>
-
-//             {/* 右側コンテンツ（ユーザーアイコンなど） */}
-//             <div className="flex items-center gap-4">
-//                 <button 
-//                     onClick={() => router.push('/auth/login')}
-//                     className="text-sm px-3 py-1 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 transition"
-//                 >
-//                     Login
-//                 </button>
-//             </div>
-//         </header>
-//     );
-// }

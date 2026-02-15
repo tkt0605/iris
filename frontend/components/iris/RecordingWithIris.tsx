@@ -3,8 +3,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase";
 import { useRouter } from "next/navigation";
-import { convertSegmentPathToStaticExportFilename } from "next/dist/shared/lib/segment-cache/segment-value-encoding";
-import { div } from "framer-motion/client";
+import { div, metadata } from "framer-motion/client";
+import { title } from "process";
 // 設定パラメータ
 const CORE_PARTICLE_COUNT = 1500; // 中心の粒子数
 const CORE_RADIUS = 60; // 中心半径
@@ -43,12 +43,74 @@ export function RecordingWithIris({
 }: RecordingWithIrisProps = {}) {
   const router = useRouter();
   const supabase = createClient();
+  const worker = useRef<Worker | null>(null);
+  const [transcription, setTranscription] = useState<string>("");
+  const [conversationId, setConversationId] = useState<string>("");
+  const [context, setContext] = useState<string>("");
   const [user, setUser] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isDone, setIsDown] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
+  // Workerの初期化
+  useEffect(() =>{
+    worker.current = new Worker(new URL('worker.js', import.meta.url), {
+      type: "module",
+    });
+    worker.current.onmessage = (event) => {
+      const { status, output } = event.data;
+      if (status === "complete"){
+        setTranscription(output.text);
+        // FastAPIに送信
+        saceToBackend(output.text);
+      };
+    };
+  }, [])
+  
+  // BolbをFolat32Arrayに変換して、Worker.jsへ。
+  const handleAudioData = (audioBlob: Blob) => {
+    const render = new FileReader();
+    render.onload = async() => {
+      const audioContext = new AudioContext();
+      const decoded = await audioContext.decodeAudioData(render.result as ArrayBuffer);
+      const audioData = decoded.getChannelData(0);
 
+      worker.current?.postMessage({ audio: audioData});
+    };
+    render.readAsArrayBuffer(audioBlob);
+  };
+
+  // FastAPIに送信
+  const saceToBackend = async (text: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_FASTAPI_URL}/save_note`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({"content": text}),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Failed to save note");
+      }
+      const data = await response.json();
+      console.log('Note保存成功:', data);
+      return data;
+    } catch (error) {
+      console.error('Note保存エラー:', error);
+      throw error;
+    }
+  };
+
+  // FastAPIからのTitleを取得
+  const GetTitleFromFastAPI = async() => {
+    try {
+      const response = await fetch(`${process.env.NEXT_FASTAPI_URL}/`)
+    } catch (error) {
+      
+    }
+  }
   // ユーザー情報取得
   useEffect(() => {
     const getUser = async () => {
@@ -84,54 +146,59 @@ export function RecordingWithIris({
         router.push('/auth/login_signup');
         return;
       }
-
-      // 1. 音声ファイルをSupabase Storageにアップロード
-      // ユーザーIDをフォルダ名として使用（セキュリティポリシーに準拠）
+      // 音声ファイルをストレージに保存
       const timestamp = Date.now();
-      const fileName = `${user.id}/recording_${timestamp}.webm`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      // file_path
+      const path = `${user.id}/record_${timestamp}_${crypto.randomUUID()}.webm`;
+
+      const {data: uploadData, error: uploadError} = await supabase.storage
         .from('audio-recordings')
-        .upload(fileName, audioBlob, {
-          contentType: 'audio/webm',
-          upsert: false,
-          cacheControl: '3600' // 1時間キャッシュ
+        .upload(path, audioBlob, {
+          contentType: "audio/webm",
+          upsert: false
         });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        alert(`音声のアップロードに失敗しました: ${uploadError.message}`);
-        return;
+      if (uploadError){
+        console.error('Audio Upload Error:', uploadError);
+        throw uploadError;
       }
-
-      console.log('Upload successful:', uploadData);
-      console.log('File size:', audioBlob.size, 'bytes');
-      console.log('Duration:', durationSeconds, 'seconds');
-
-      // 2. アップロード成功後、discussionレコードを作成
-      const { data: discussData, error: discussError } = await supabase
-        .from('discussions')
+      
+      // Conversationsレコード（親）を新規作成
+      const { data: conversationData, error: conversationError} = await supabase
+        .from('conversations')
         .insert({
-          audio_file_path: uploadData.path,
-          created_at: new Date().toISOString(),
           user_id: user.id,
-          duration_seconds: durationSeconds // 実際の録音時間（秒）
-        })
-        .select()
-        .single();
-
-      if (discussError) {
-        console.error('Database error:', discussError);
-        alert(`データベースへの保存に失敗しました: ${discussError.message}`);
-        return;
+          title: "New Note",
+          is_activate: true,
+      })
+      .select()
+      .single();
+      if (conversationError) {
+        console.error('Conversation creation error:', conversationError);
+        throw conversationError;
       }
+      const newConversationId = conversationData.id;
 
-      console.log('Discussion created:', discussData);
-
-      // 3. 画面遷移
-      const discussId = discussData.id;
-      router.push(`/discus/${discussId}`);
-
+      // Messagesレコード（子）を作成]
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: newConversationId,
+          role: 'user',
+          context: "",
+          audio_url: uploadData.path,
+          audio_duration: durationSeconds,
+          metadata: {
+            action: "record",
+            status: "success",
+            device: "web"
+          }
+      });
+      if (messagesError) {
+        console.error('Messages Creation Error:', messagesError);
+        throw messagesError;
+      }
+      console.log('Conversation && Messages Created Successfully:', newConversationId);
+      router.push(`/discus/${newConversationId}`);
     } catch (error) {
       console.error('Recording complete error:', error);
       alert('処理中にエラーが発生しました');
@@ -145,7 +212,7 @@ export function RecordingWithIris({
     onRecordingChange?.(newState);
   };
 
-  // 1. 録音開始・停止処理
+  // 1. 録音開始・停止処理 /Conversationsの作成
   useEffect(() => {
     const handleAudio = async () => {
       if (isRecording) {
@@ -441,4 +508,4 @@ export function RecordingWithIris({
       </div>
     </div>
   );
-};
+}; 

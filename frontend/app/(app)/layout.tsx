@@ -50,6 +50,8 @@ export default function IndexLayout({ children }: IndexLayoutProps) {
             <main
                 className={`
                  transition-all
+                 pt-14
+                 w-full h-full
                 ${mounted ? "duration-300" : "duration-300"}
                 ${isSidebarOpen ? "md:pl-16" : "md:pl-60"}
                 `}

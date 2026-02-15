@@ -46,10 +46,10 @@ export function Aside({isOpen, onToggle}: AsideProps) {
                 setError(null);
 
                 const { data, error } = await supabase
-                    .from("discussions")
+                    .from("conversations")
                     .select('*')
                     .eq('user_id', user.id)
-                    .order('created_at', { ascending: false }); // 新しい順にソート
+                    .order('created_at', { ascending: true}); // 新しい順にソート
 
                 if (error) {
                     console.error('Discussion fetch error:', error);
