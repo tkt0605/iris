@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase";
 import { useParams } from "next/navigation";
-interface HeaderProps{
+interface HeaderProps {
     isSideOpen: boolean;
 }
 type Conversation = {
@@ -13,7 +13,7 @@ type Conversation = {
     created_at: string;
     is_activate: boolean;
 }
-export function Header({isSideOpen}: HeaderProps) {
+export function Header({ isSideOpen }: HeaderProps) {
     const router = useRouter();
     const params = useParams();
     const conversationId = params.id as string;
@@ -23,17 +23,18 @@ export function Header({isSideOpen}: HeaderProps) {
     const supabase = createClient();
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [conversationLoading, setConversationLoading] = useState(true);
     // const router = useRouter();
     const [open, setOpen] = useState(false);
     const [sideOpen, setSideOpen] = useState(false);
-    const [mounted, setMounted ] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const [opensearch, setOpenSearch] = useState(false);
     const logout = () => {
         return console.log('ログアウト');
     };
     useEffect(() => {
         const saved = localStorage.getItem('AsideOpenStorage');
-        if (saved !== null){
+        if (saved !== null) {
             setSideOpen(saved === "true");
         }
         console.log(sideOpen);
@@ -56,43 +57,47 @@ export function Header({isSideOpen}: HeaderProps) {
         if (!conversationId) return;
         const fetchConversation = async () => {
             try {
-                const { data, error} = await supabase
-                .from('conversations')
-                .select('*')
-                .eq('id', conversationId)
-                .single();
-                if (data) setConversation(data);
+                if (conversationId) {
+                    const { data, error } = await supabase
+                        .from('conversations')
+                        .select('*')
+                        .eq('id', conversationId)
+                        .single();
+                    if (data) {
+                        setConversation(data);
+                        setConversationLoading(false);
+                    }
+                } else {
+                    setConversationLoading(false);
+                }
             } catch (error) {
                 console.error('Conversation fetch error:', error);
                 throw error;
             }
         };
         fetchConversation();
-    }, [conversationId]);
+    }, [conversationId, supabase]);
     return (
         <header
             className={`
-                fixed top-0 bg-transparent inset-x-0 h-14 z-50  border-b border-gray-700/20
-                ${mounted ? "duration-300" : "duration-300"} 
+                fixed top-0 bg-transparent inset-x-0 h-14 z-50 
+                ${mounted ? "duration-0" : "duration-300"} 
                 ${isSideOpen ? "md:left-16" : "md:left-60"}
-            `} 
+            `}
         >
-            <div className="max-w-9wl mx-auto h-full px-6 sm:px-2 flex items-center justify-center gap-3">
-                <div className="flex items-center justify-center">
-
-                    <h1 className="text-2xl font-bold">{conversation?.title}</h1>
-                </div>
-                <div className="flex items-center justify-between">
-                    <div className="md:hidden">
+            <div className="max-w-9wl mx-auto h-full px-6 sm:px-2 flex items-center justify-between">
+                <button>
+                    <span className="text-2xl font-bold">I.R.I.S</span>
+                </button>
+                <div className="text-2xl font-bold">{conversation?.title || ""}</div>
+                    {/* <div className="md:hidden">
                         <button onClick={() => router.push('')} className="text-gray-700 hover:text-white rounded-xl hover:bg-white/10 p-2 duration-300">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-layout-sidebar-inset-reverse" viewBox="0 0 16 16">
                                 <path d="M2 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1zm12-1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z" />
                                 <path d="M13 4a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1z" />
                             </svg>
                         </button>
-                    </div>
-                </div>
-                <div className="flex-1"></div>
+                    </div> */}
                 <div className="flex items-center gap-8 text-sm">
                     <div className="relative">
                         {loading ?

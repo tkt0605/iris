@@ -78,11 +78,11 @@ export function Aside({isOpen, onToggle}: AsideProps) {
         `}>
             <nav className="shrink-0 space-y-1 z-10">
                 <div className={[
-                    isOpen ? "" : "flex items-center justify-between"
+                    isOpen ? "" : "pl-1 flex items-center justify-between"
                 ].join(" ")}>
                     {!isOpen &&
                         <button className="p-1 px-4 rounded-lg" aria-label="ロゴ">
-                            <span className="text-2xl font-bold tracking-tighter">I/R/I/S</span>
+                            {/* <span className="text-2xl font-bold tracking-tighter">I/R/I/S</span> */}
                         </button>
                     }
                     <div className="cursor-pointer rounded-lg  p-2 flex items-center justify-center">

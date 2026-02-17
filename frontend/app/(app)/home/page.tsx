@@ -2,7 +2,7 @@
 
 import { difference } from "next/dist/build/utils";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/iris/Header";
@@ -13,6 +13,9 @@ import { createClient } from "@/utils/supabase";
 
 export default function HomePage() {
   const router = useRouter();
+  const params = useParams();
+  const routeId = params.id as string;
+  console.log('Where is the route?:', routeId);
   // Auth（簡易）
   const supabase = createClient();
   const [user, setUser] = useState<any>(null);
@@ -119,6 +122,7 @@ export default function HomePage() {
               height={500}
               transparent={true} 
               onClick={() => setIsNowRecord(true)}
+              NewChat={true}
             />
           </div>
 

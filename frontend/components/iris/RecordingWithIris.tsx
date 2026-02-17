@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { div, metadata } from "framer-motion/client";
 import { title } from "process";
 // 設定パラメータ
@@ -27,6 +27,7 @@ interface RecordingWithIrisProps {
   transparent?: boolean;        // 背景を透明にする (デフォルト: false)
   onRecordingChange?: (isRecording: boolean) => void; // 録音状態変更コールバック
   onClick?: () => void;
+  NewChat?: boolean;
 }
 
 export function RecordingWithIris({ 
@@ -39,9 +40,12 @@ export function RecordingWithIris({
   rounded = false,
   shadow = false,
   transparent = false,
+  NewChat = false,
   onRecordingChange
 }: RecordingWithIrisProps = {}) {
   const router = useRouter();
+  const params = useParams();
+  const routeId = params.id as  string;
   const supabase = createClient();
   const worker = useRef<Worker | null>(null);
   const [transcription, setTranscription] = useState<string>("");
@@ -110,7 +114,9 @@ export function RecordingWithIris({
     } catch (error) {
       
     }
-  }
+  };
+
+
   // ユーザー情報取得
   useEffect(() => {
     const getUser = async () => {
@@ -146,6 +152,7 @@ export function RecordingWithIris({
         router.push('/auth/login_signup');
         return;
       }
+      
       // 音声ファイルをストレージに保存
       const timestamp = Date.now();
       // file_path
@@ -161,44 +168,115 @@ export function RecordingWithIris({
         console.error('Audio Upload Error:', uploadError);
         throw uploadError;
       }
-      
-      // Conversationsレコード（親）を新規作成
-      const { data: conversationData, error: conversationError} = await supabase
-        .from('conversations')
-        .insert({
-          user_id: user.id,
-          title: "New Note",
-          is_activate: true,
-      })
-      .select()
-      .single();
-      if (conversationError) {
-        console.error('Conversation creation error:', conversationError);
-        throw conversationError;
+
+      //NewChatがtrueの時、Conversationsレコード（親）を新規作成
+      if(NewChat){
+        console.log('New Chat is:', NewChat);
+        const { data: conversationData, error: conversationError} = await supabase
+          .from('conversations')
+          .insert({
+            user_id: user.id,
+            title: "New Note",
+            is_activate: true,
+        })
+        .select()
+        .single();
+        if (conversationError) {
+          console.error('Conversation creation error:', conversationError);
+          throw conversationError;
+        }
+        const newConversationId = conversationData.id;
+        console.log('New ConverSation Created:', newConversationId);
+
+        // Messagesレコード（子）を作成
+        const { data: messagesData, error: messagesError} = await supabase
+          .from('messages')
+          .insert({
+            conversation_id: newConversationId,
+            role: 'user',
+            context: "",
+            audio_url: uploadData.path,
+            audio_duration: durationSeconds,
+            metadata: {
+              action: "record",
+              status: "success",
+              device: "web"
+            }
+          })
+          .select()
+          .single();
+          if (messagesError){
+            console.error('Messages creation error:', messagesError);
+            throw messagesError;
+          }
+          console.log('Messages Created Successfully:', messagesData);
+          router.push(`/discus/${newConversationId}`);
+      }else{
+        console.log('New Chat is:', NewChat);
+        const WhereAmI = params.id as string;
+        console.log('Where Am I?:', WhereAmI);
+        const { data: ContinueMessagesData, error: ContinueMessagesError} = await supabase
+          .from('messages')
+          .insert({
+            conversation_id: WhereAmI,
+            role: 'user',
+            context: "",
+            audio_url: uploadData.path,
+            audio_duration: durationSeconds,
+            metadata: {
+              action: "record",
+              status: "success",
+              device: "web"
+            }
+          })
+          .select()
+          .single();
+          if (ContinueMessagesError){
+            console.log("I am here:", WhereAmI);
+            console.error('Continue Messages creation Error:', ContinueMessagesError);
+            throw ContinueMessagesError;
+          }
+          console.log('contine Messages Created Successfully:', ContinueMessagesData);
+          router.push(`/discus/${WhereAmI}`);
       }
-      const newConversationId = conversationData.id;
+      // // Conversationsレコード（親）を新規作成
+      // const { data: conversationData, error: conversationError} = await supabase
+      //   .from('conversations')
+      //   .insert({
+      //     user_id: user.id,
+      //     title: "New Note",
+      //     is_activate: true,
+      // })
+      // .select()
+      // .single();
+      // if (conversationError) {
+      //   console.error('Conversation creation error:', conversationError);
+      //   throw conversationError;
+      // }
+      // const newConversationId = conversationData.id;
 
       // Messagesレコード（子）を作成]
-      const { data: messagesData, error: messagesError } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: newConversationId,
-          role: 'user',
-          context: "",
-          audio_url: uploadData.path,
-          audio_duration: durationSeconds,
-          metadata: {
-            action: "record",
-            status: "success",
-            device: "web"
-          }
-      });
-      if (messagesError) {
-        console.error('Messages Creation Error:', messagesError);
-        throw messagesError;
-      }
-      console.log('Conversation && Messages Created Successfully:', newConversationId);
-      router.push(`/discus/${newConversationId}`);
+      // const { data: messagesData, error: messagesError } = await supabase
+      //   .from('messages')
+      //   .insert({
+      //     conversation_id: newConversationId,
+      //     role: 'user',
+      //     context: "",
+      //     audio_url: uploadData.path,
+      //     audio_duration: durationSeconds,
+      //     metadata: {
+      //       action: "record",
+      //       status: "success",
+      //       device: "web"
+      //     }
+      // });
+      // if (messagesError) {
+      //   // ここで、エラー発生
+      //   console.error('Messages Creation Error:', messagesError);
+      //   throw messagesError;
+      // }
+      // console.log('Conversation && Messages Created Successfully:', messagesData);
+      // router.push(`/discus/${newConversationId}`);
     } catch (error) {
       console.error('Recording complete error:', error);
       alert('処理中にエラーが発生しました');
