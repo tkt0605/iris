@@ -72,24 +72,22 @@ export default function DiscussPage() {
                     <section className=" space-y-4 pt-4">
                         <div className="flex flex-col gap-4">
                             <div className="flex-1 space-y-6">
-                                {messages.map((msg) => (
+                                {/* ユーザーの会話内容を表示 */}
+                                {messages.filter((msg) => msg.role === "user").slice(-1).map((msg) => (
                                     <div
                                         key={msg.id}
-                                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                        className={`flex justify-end`}
                                     >
-                                        <div className={`max-w-[80%] p-4 rounded-xl ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-900'
-                                            }`}>
+                                        <div className={`max-w-[80%] p-4 rounded-xl bg-blue-600 text-white`}>
                                             {/* 役割ラベル */}
                                             <div className="text-xs opacity-70 mb-1">
-                                                {msg.role === 'user' ? 'あなた' : 'IRIS'}
+                                                {msg.role === "user" ? "あなた" : "IRIS"}
                                             </div>
 
                                             {/* 音声プレイヤー */}
                                             {msg.audio_url && (
                                                 <audio controls src={msg.audio_url} className="mb-2 w-full h-8" />
                                             )}
-
-                                            {/* テキスト内容 (まだ文字起こし前なら表示しない制御も可) */}
                                             <p>{msg.context || "(音声解析中...)"}</p>
                                         </div>
                                     </div>
@@ -101,11 +99,26 @@ export default function DiscussPage() {
             </div>
             {/* ここに会話内容(返答の内容)を表示 */}
             <main className="flex-1 overflow-y-auto pt-25">
-                <div>
-                    <h1 className="text-4xl font-bold">
-                        ここに会話内容(返答の内容)を表示
-                    </h1>
-                </div>
+
+                {messages.filter((msg) => msg.role === 'assistant').slice(-1).map((msg) => (
+                    <div
+                        key={msg.id}
+                        className={`flex justify-start`}
+                    >
+                        <div className={`max-w-[100%] p-4 `}>
+                            {/* 役割ラベル */}
+                            <div className="text-xs opacity-70 mb-1">
+                                {msg.role === 'assistant' ? 'IRIS' : "あなた"}
+                            </div>
+
+                            {/* 音声プレイヤー */}
+                            {msg.audio_url && (
+                                <audio controls src={msg.audio_url} className="mb-2 w-full h-8" />
+                            )}
+                            <p>{msg.context || "(音声解析中...)"}</p>
+                        </div>
+                    </div>
+                ))}
             </main>
         </div>
     );

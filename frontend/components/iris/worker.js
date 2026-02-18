@@ -3,7 +3,7 @@ env.allowLocalModels = false;
 
 class WhisperSignleton{
     static task = 'automatic-speech-recognition';
-    static model = 'openai/whisper-tiny';
+    static model = 'Xenova/whisper-tiny';
     static instance = null;
 
     static async GetInstance(progress_callback = null){

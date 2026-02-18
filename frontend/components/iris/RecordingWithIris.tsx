@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase";
 import { useRouter, useParams } from "next/navigation";
-import { div, metadata } from "framer-motion/client";
+import { audio, div, metadata } from "framer-motion/client";
 import { title } from "process";
 // 設定パラメータ
 const CORE_PARTICLE_COUNT = 1500; // 中心の粒子数
@@ -56,6 +56,16 @@ export function RecordingWithIris({
   const [isDone, setIsDown] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+    };
+    getUser();
+    
+  }, [supabase]);
+  
   // Workerの初期化
   useEffect(() =>{
     worker.current = new Worker(new URL('worker.js', import.meta.url), {
@@ -65,11 +75,19 @@ export function RecordingWithIris({
       const { status, output } = event.data;
       if (status === "complete"){
         setTranscription(output.text);
-        // FastAPIに送信
-        saceToBackend(output.text);
+        if (user?.id) {
+          console.log('user?.id:', user?.id);
+          // FastAPIに送信
+          saveToBackend(output.text, user?.id as string); 
+        } else {
+          alert('ログインが必要です');
+          router.push('/auth/login_signup');
+          return;
+        }
       };
     };
-  }, [])
+    return () => worker.current?.terminate();
+  }, [user])
   
   // BolbをFolat32Arrayに変換して、Worker.jsへ。
   const handleAudioData = (audioBlob: Blob) => {
@@ -85,18 +103,24 @@ export function RecordingWithIris({
   };
 
   // FastAPIに送信
-  const saceToBackend = async (text: string) => {
+  const saveToBackend = async (text: string, user_id: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_FASTAPI_URL}/save_note`, {
+      const url = `${process.env.NEXT_PUBLIC_FASTAPI_URL}`;
+      console.log('url:', url);
+      const response = await fetch(`${url}/save_note`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({"content": text}),
+        body: JSON.stringify({
+          "context": text,
+          "user_id": user_id,
+          // "role": role
+        }),
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || "Failed to save note");
+        throw new Error(JSON.stringify(error));
       }
       const data = await response.json();
       console.log('Note保存成功:', data);
@@ -115,16 +139,6 @@ export function RecordingWithIris({
       
     }
   };
-
-
-  // ユーザー情報取得
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      setUser(currentUser);
-    };
-    getUser();
-  }, [supabase]);
   
   // 音声処理用のRef
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -193,8 +207,8 @@ export function RecordingWithIris({
           .from('messages')
           .insert({
             conversation_id: newConversationId,
-            role: 'user',
-            context: "",
+            role: "user",
+            context: transcription,
             audio_url: uploadData.path,
             audio_duration: durationSeconds,
             metadata: {
@@ -219,8 +233,8 @@ export function RecordingWithIris({
           .from('messages')
           .insert({
             conversation_id: WhereAmI,
-            role: 'user',
-            context: "",
+            role: "user",
+            context: transcription,
             audio_url: uploadData.path,
             audio_duration: durationSeconds,
             metadata: {
@@ -239,44 +253,6 @@ export function RecordingWithIris({
           console.log('contine Messages Created Successfully:', ContinueMessagesData);
           router.push(`/discus/${WhereAmI}`);
       }
-      // // Conversationsレコード（親）を新規作成
-      // const { data: conversationData, error: conversationError} = await supabase
-      //   .from('conversations')
-      //   .insert({
-      //     user_id: user.id,
-      //     title: "New Note",
-      //     is_activate: true,
-      // })
-      // .select()
-      // .single();
-      // if (conversationError) {
-      //   console.error('Conversation creation error:', conversationError);
-      //   throw conversationError;
-      // }
-      // const newConversationId = conversationData.id;
-
-      // Messagesレコード（子）を作成]
-      // const { data: messagesData, error: messagesError } = await supabase
-      //   .from('messages')
-      //   .insert({
-      //     conversation_id: newConversationId,
-      //     role: 'user',
-      //     context: "",
-      //     audio_url: uploadData.path,
-      //     audio_duration: durationSeconds,
-      //     metadata: {
-      //       action: "record",
-      //       status: "success",
-      //       device: "web"
-      //     }
-      // });
-      // if (messagesError) {
-      //   // ここで、エラー発生
-      //   console.error('Messages Creation Error:', messagesError);
-      //   throw messagesError;
-      // }
-      // console.log('Conversation && Messages Created Successfully:', messagesData);
-      // router.push(`/discus/${newConversationId}`);
     } catch (error) {
       console.error('Recording complete error:', error);
       alert('処理中にエラーが発生しました');
@@ -342,12 +318,17 @@ export function RecordingWithIris({
             
             // 録音データをBlobに変換
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            //録音停止の際に、音声データをworkers.jsへ送信
+            handleAudioData(audioBlob);
             
             // 音声データと録音時間を処理してページ遷移
+            // const role = isRecording ? "user" : "assistant";
             await handleRecordingComplete(audioBlob, durationSeconds);
             
             // 録音開始時刻をリセット
             recordingStartTimeRef.current = null;
+
+
           };
 
           mediaRecorder.start();
