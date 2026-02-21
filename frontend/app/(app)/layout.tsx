@@ -15,7 +15,7 @@ export default function IndexLayout({ children }: IndexLayoutProps) {
     const [isNowRecord, setIsNowRecord] = useState(false);
     useEffect(() => {
         const saved = localStorage.getItem('AsideOpenStorage');
-        console.log(saved);
+        // console.log(saved);
         if (saved !== null) {
             setSidebarOpen(saved === "true");
         }

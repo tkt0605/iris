@@ -16,8 +16,7 @@ type Conversation = {
 export function Header({ isSideOpen }: HeaderProps) {
     const router = useRouter();
     const params = useParams();
-    const conversationId = params.id as string;
-    console.log(conversationId);
+    const conversationId = params.id as string; 
     // const [conversation, setConversation] = useState<Conversation[]>([]);
     const [conversation, setConversation] = useState<any>(null);
     const supabase = createClient();

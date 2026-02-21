@@ -42,7 +42,6 @@ async def save_note(request: NoteRequest):
     try:
         generated_title = request.context[:15] + "..." if len(request.context) > 15 else request.context
         conv_response = supabase.table("conversations").insert({
-            "id": request.id,
             "title": generated_title,
             "is_activate": True,
             "user_id": str(request.user_id),
@@ -52,6 +51,7 @@ async def save_note(request: NoteRequest):
         new_conversation_id = conv_response.data[0]["id"]
         message_response = supabase.table('messages').insert({
             "conversation_id": new_conversation_id,
+            "role": "user",
             "context": request.context
         }).execute()
         if not message_response.data:

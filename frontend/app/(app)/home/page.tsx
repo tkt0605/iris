@@ -15,7 +15,6 @@ export default function HomePage() {
   const router = useRouter();
   const params = useParams();
   const routeId = params.id as string;
-  console.log('Where is the route?:', routeId);
   // Auth（簡易）
   const supabase = createClient();
   const [user, setUser] = useState<any>(null);
