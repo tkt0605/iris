@@ -41,7 +41,7 @@ async def root():
 async def save_note(request: NoteRequest):
     try:
         generated_title = request.context[:15] + "..." if len(request.context) > 15 else request.context
-        conv_response = supabase.table("conversations").insert({
+        conv_response = supabase.table("conversations").update({
             "title": generated_title,
             "is_activate": True,
             "user_id": str(request.user_id),
@@ -49,7 +49,7 @@ async def save_note(request: NoteRequest):
         if not conv_response.data:
             raise HTTPException(status_code=400, detail="Conversation not saved")
         new_conversation_id = conv_response.data[0]["id"]
-        message_response = supabase.table('messages').insert({
+        message_response = supabase.table('messages').update({
             "conversation_id": new_conversation_id,
             "role": "user",
             "context": request.context
@@ -63,7 +63,4 @@ async def save_note(request: NoteRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    #1. 最初のコンテキストの15文字を抽出してタイトル生成
-    
-    #2. データベースに保存
 

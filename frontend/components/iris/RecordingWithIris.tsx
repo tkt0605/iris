@@ -95,7 +95,8 @@ export function RecordingWithIris({
           if (status === "complete") {
             setTranscription(output.text);
             console.log("🔥 解析完了！テキスト:", output.text);
-            saveFinalToSupabase(output.text, tempAudioPath, tempAudioDuration)
+            saveFinalToSupabase(output.text, tempAudioPath, tempAudioDuration);
+            // 文字起こしテキストをsaveToBackend()へ送信
             handleFinaize(output.text); 
           } else if (status === "error") {
             console.error('Worker Error:', rest.error);
@@ -122,7 +123,7 @@ export function RecordingWithIris({
   const handleFinaize = (text: string) => {
       if (userRef.current?.id) {
         console.log('USER ID:', userRef.current.id);
-      saveToBackend(text);
+      // saveToBackend(text);
     } else {
       console.warn('User ID is null at finalize. Auth session might be unstable.');
       alert('セッションが不安定です。再ログインを試してください。');
@@ -151,35 +152,35 @@ export function RecordingWithIris({
   };
 
   // FastAPIに送信
-  const saveToBackend = async (text: string) => {
-    try {
-      let role = "user";
-      const user_id = userRef.current?.id;
-      const url = `${process.env.NEXT_PUBLIC_FASTAPI_URL}`;
-      console.log('url:', url);
-      const response = await fetch(`${url}/save_note`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          "context": text,
-          "user_id": user_id,
-          "role": role,
-        }),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(JSON.stringify(error));
-      }
-      const data = await response.json();
-      console.log('Note保存成功:', data);
-      return data;
-    } catch (error) {
-      console.error('Note保存エラー:', error);
-      throw error;
-    }
-  };
+  // const saveToBackend = async (text: string) => {
+  //   try {
+  //     let role = "user";
+  //     const user_id = userRef.current?.id;
+  //     const url = `${process.env.NEXT_PUBLIC_FASTAPI_URL}`;
+  //     console.log('url:', url);
+  //     const response = await fetch(`${url}/save_note`, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json"
+  //       },
+  //       body: JSON.stringify({
+  //         "context": text,
+  //         "user_id": user_id,
+  //         "role": role,
+  //       }),
+  //     });
+  //     if (!response.ok) {
+  //       const error = await response.json();
+  //       throw new Error(JSON.stringify(error));
+  //     }
+  //     const data = await response.json();
+  //     console.log('Note保存成功:', data);
+  //     return data;
+  //   } catch (error) {
+  //     console.error('Note保存エラー:', error);
+  //     throw error;
+  //   }
+  // };
 
   // 音声処理用のRef
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -235,14 +236,18 @@ export function RecordingWithIris({
       const user_id = userRef.current?.id;
       const url = `${process.env.NEXT_PUBLIC_FASTAPI_URL}`;
       console.log('url:', url);
-      if (NewChat) {
+      if (NewChat as boolean === true) {
 
         console.log('New Chat is:', NewChat);
+        let generated_title = text.slice(0, 15) + '...';
+        if (text.length > 15){
+          return generated_title;
+        }
         const { data: conversationData, error: conversationError } = await supabase
           .from('conversations')
           .insert({
             user_id: user_id,
-            title: "New Note",
+            title: generated_title,
             is_activate: true,
           })
           .select()
@@ -260,7 +265,7 @@ export function RecordingWithIris({
           .insert({
             conversation_id: newConversationId,
             role: "user",
-            context: transcription,
+            context: text,
             audio_url: audioPath,
             audio_duration: audioDuration,
             metadata: {
@@ -286,7 +291,7 @@ export function RecordingWithIris({
           .insert({
             conversation_id: WhereAmI,
             role: "user",
-            context: transcription,
+            context: text,
             audio_url: audioPath,
             audio_duration: audioDuration,
             metadata: {
@@ -369,7 +374,7 @@ export function RecordingWithIris({
             // 録音データをBlobに変換
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             //録音停止の際に、音声データをworkers.jsへ送信
-            handleAudioData(audioBlob);
+            // handleAudioData(audioBlob);
 
             // 音声データと録音時間を処理してページ遷移
             // const role = isRecording ? "user" : "assistant";
