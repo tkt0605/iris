@@ -32,9 +32,8 @@ export function Aside({isOpen, onToggle}: AsideProps) {
         return () => subscription.unsubscribe();
     }, []);
 
-    // Discussions取得（ユーザーログイン後のみ実行）
+    // Discussions取得 + Realtimeサブスクリプション（ユーザーログイン後のみ実行）
     useEffect(() => {
-        // ユーザーがログインしていない場合は何もしない
         if (!user?.id) {
             setDiscussion([]);
             return;
@@ -49,7 +48,7 @@ export function Aside({isOpen, onToggle}: AsideProps) {
                     .from("conversations")
                     .select('*')
                     .eq('user_id', user.id)
-                    .order('created_at', { ascending: true}); // 新しい順にソート
+                    .order('created_at', { ascending: false });
 
                 if (error) {
                     console.error('Discussion fetch error:', error);
@@ -69,7 +68,54 @@ export function Aside({isOpen, onToggle}: AsideProps) {
         };
 
         getDiscussion();
-    }, [user?.id, supabase]); // user.idが変わったときのみ実行
+
+        // DBの変更をリアルタイムで検知
+        const channel = supabase
+            .channel(`conversations:${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'conversations',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    setDiscussion((prev) => [...prev, payload.new as any]);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'conversations',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    setDiscussion((prev) =>
+                        prev.map((d) => (d.id === payload.new.id ? (payload.new as any) : d))
+                    );
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'conversations',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    setDiscussion((prev) => prev.filter((d) => d.id !== payload.old.id));
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user?.id]); // user.idが変わったときのみ実行
     return (
         <aside className={`
             hidden sm:flex flex-col fixed top-0 left-0 h-screen bg-gray-400/5 dark:bg-black gap-2 z-10 border-r border-gray-700/20
@@ -164,9 +210,6 @@ export function Aside({isOpen, onToggle}: AsideProps) {
                                         <div className="font-medium truncate">
                                             {discuss.title || '無題の相談'}
                                         </div>
-                                        {/* <div className="text-xs text-gray-500 dark:text-gray-400">
-                                            {new Date(discuss.created_at).toLocaleDateString('ja-JP')}
-                                        </div> */}
                                     </div>
                                 </button>
                             </div>

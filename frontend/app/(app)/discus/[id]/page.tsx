@@ -47,15 +47,15 @@ export default function DiscussPage() {
                     .from('messages').
                     select('*')
                     .eq('conversation_id', conversationId)
-                    .order('created_at', { ascending: true });
+                    .order('created_at', { ascending: false });
                 if (data) setMessages(data);
+                console.log('Messages fetched:', data);
             } catch (error) {
                 console.error('Messages fetch error:', error);
                 throw error;
             }
         };
         fetchMessages();
-
     }, [conversationId]);
     return (
         <div className="flex items-start gap-16 md:p-4 w-full h-full">
@@ -73,7 +73,7 @@ export default function DiscussPage() {
                         <div className="flex flex-col gap-4">
                             <div className="flex-1 space-y-6">
                                 {/* ユーザーの会話内容を表示 */}
-                                {messages.filter((msg) => msg.role === "user").slice(-1).map((msg) => (
+                                {messages.filter((msg) => msg.role === "user").map((msg) => (
                                     <div
                                         key={msg.id}
                                         className={`flex justify-end`}
@@ -100,7 +100,7 @@ export default function DiscussPage() {
             {/* ここに会話内容(返答の内容)を表示 */}
             <main className="flex-1 overflow-y-auto pt-25">
 
-                {messages.filter((msg) => msg.role === 'assistant').slice(-1).map((msg) => (
+                {messages.filter((msg) => msg.role === 'assistant').map((msg) => (
                     <div
                         key={msg.id}
                         className={`flex justify-start`}

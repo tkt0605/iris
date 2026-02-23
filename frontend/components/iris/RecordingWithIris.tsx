@@ -3,8 +3,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase";
 import { useRouter, useParams } from "next/navigation";
-import { audio, div, metadata } from "framer-motion/client";
-import { title } from "process";
 // 設定パラメータ
 const CORE_PARTICLE_COUNT = 1500; // 中心の粒子数
 const CORE_RADIUS = 60; // 中心半径
@@ -48,20 +46,21 @@ export function RecordingWithIris({
   const routeId = params.id as string;
   const supabase = createClient();
   const worker = useRef<Worker | null>(null);
+  const llmworker = useRef<Worker | null>(null);
   const [transcription, setTranscription] = useState<string>("");
-  // const [conversationId, setConversationId] = useState<string>("");
-  // const [context, setContext] = useState<string>("");
+  const [isThinking, setIsThinking] = useState<boolean>(false);
+  const isThinkingRef = useRef<boolean>(false);
   const [user, setUser] = useState<any>(null);
   const userRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
-  const [tempAudioPath, setTempAUdioPath ] = useState<string>("");
-  const [tempAudioDuration, setTempAudioDuration ] = useState<number>(0);
+  const tempAudioPath = useRef<string>("");
+  const tempAudioDuration = useRef<number>(0);
 
   const [isRecording, setIsRecording] = useState(false);
   const [isDone, setIsDown] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
-
+  const currentConversationIdRef = useRef<string | null>(null);
   useEffect(() => {
     userRef.current = user;
     console.log('ログインユーザーID:', userRef.current?.id);
@@ -83,53 +82,94 @@ export function RecordingWithIris({
     return () => subscription.unsubscribe();
   }, []);
 
-  // Workerの初期化
+  // Workerの初期化 worker.js/llm-worker.js
   useEffect(() => {
-    const initWorker = () => {
-      try {
-        worker.current = new Worker(new URL('worker.js', import.meta.url), {
-          type: "module",
-        });
-        worker.current.onmessage = (event) => {
-          const { status, output ,...rest } = event.data;
-          if (status === "complete") {
-            setTranscription(output.text);
-            console.log("🔥 解析完了！テキスト:", output.text);
-            saveFinalToSupabase(output.text, tempAudioPath, tempAudioDuration);
-            // 文字起こしテキストをsaveToBackend()へ送信
-            handleFinaize(output.text); 
-          } else if (status === "error") {
-            console.error('Worker Error:', rest.error);
-            alert('Worker Error:' + rest.error);
-            return;
-          } else if (status === "progress" && rest.progress === 100) {
-            console.log(`✅ ファイルロード完了: ${rest.file}. 解析を開始します...`);
+    // worker.js
+    try {
+      worker.current = new Worker(new URL("worker.js", import.meta.url), {type: "module"});
+      worker.current.onmessage = async (event) => {
+        const { status, output, ...rest} = event.data;
+        if (status === "complete") {
+          const text = output.text;
+          console.log('🔥 解析完了！テキスト:', text);
+          setTranscription(text);
+          if (!userRef.current?.id) {
+            alert('ログインが必要です');
+            return router.push('/auth/login_signup');
           }
-        };
-        return () => worker.current?.terminate();
-      } catch (error) {
-        console.error('Worker initialization error:', error);
+
+          const convId = await saveFinalToSupabase(
+            text,
+            tempAudioPath.current,
+            tempAudioDuration.current
+          );
+          if (!convId) {
+            alert('データ保存に失敗しました');
+            return;
+          }
+          currentConversationIdRef.current = convId;
+          isThinkingRef.current = true;
+          setIsThinking(true);
+
+          llmworker.current?.postMessage({
+            userText: text,
+          })
+        }else if (status === "error") {
+          console.error('Worker Error:', rest.error);
+          alert('Worker Error:' + rest.error);
+          return;
+        }else if (status === "progress" && rest.progress === 100) {
+          console.log('✅ Whisper Worker ロード完了'+ rest.file);
+        }
       }
-    };
-    initWorker();
+    } catch (error) {
+      console.error('Worker initialization error:', error);
+      alert('Worker initialization error:' + error);
+      return;
+    }
+    // llm-worker.js
+    try {
+      llmworker.current = new Worker(new URL("llm-worker.js", import.meta.url), { type: "module"});
+      llmworker.current.onmessage = async(event) => {
+        const { status, output, ...rest } = event.data;
+        if (status === "complete") {
+          isThinkingRef.current = false;
+          setIsThinking(false);
+          console.log('🔥 LLM Worker 解析完了！返答:', output);
+          const convId = currentConversationIdRef.current;
+
+          if (convId) {
+            await saveAssistantMessage(output, convId);
+            router.push(`/discus/${convId}`);
+          }else{
+            alert("会話履歴が見つかりませんでした。")
+          }
+          return;
+        }else if (status === "error") {
+          isThinkingRef.current = false;
+          setIsThinking(false);
+          console.error('LLM Worker Error:', rest.error);
+          alert('LLM Worker Error:' + rest.error);
+          if (currentConversationIdRef.current) {
+            router.push(`/discus/${currentConversationIdRef.current}`);
+          }
+        }else if (status === "progress" && rest.progress === 100) {
+          console.log('✅ LLM Worker ロード完了'+ rest.progress);
+        }
+      }
+    } catch (error) {
+      console.error('LLM Worker initialization error:', error);
+      alert('LLM Worker initialization error:' + error);
+      return;
+    }
 
     return () => {
-      if (worker.current) {
-        worker.current.terminate();
-        worker.current = null;
-      }
+      worker.current?.terminate();
+      worker.current = null;
+      llmworker.current?.terminate();
+      llmworker.current = null;
     };
   }, []);
-  const handleFinaize = (text: string) => {
-      if (userRef.current?.id) {
-        console.log('USER ID:', userRef.current.id);
-      // saveToBackend(text);
-    } else {
-      console.warn('User ID is null at finalize. Auth session might be unstable.');
-      alert('セッションが不安定です。再ログインを試してください。');
-      router.push('/auth/login_signup');
-    }
-  }
   // BolbをFolat32Arrayに変換して、Worker.jsへ。
   const handleAudioData = async(audioBlob: Blob) => {
     try {
@@ -151,36 +191,6 @@ export function RecordingWithIris({
     }
   };
 
-  // FastAPIに送信
-  // const saveToBackend = async (text: string) => {
-  //   try {
-  //     let role = "user";
-  //     const user_id = userRef.current?.id;
-  //     const url = `${process.env.NEXT_PUBLIC_FASTAPI_URL}`;
-  //     console.log('url:', url);
-  //     const response = await fetch(`${url}/save_note`, {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json"
-  //       },
-  //       body: JSON.stringify({
-  //         "context": text,
-  //         "user_id": user_id,
-  //         "role": role,
-  //       }),
-  //     });
-  //     if (!response.ok) {
-  //       const error = await response.json();
-  //       throw new Error(JSON.stringify(error));
-  //     }
-  //     const data = await response.json();
-  //     console.log('Note保存成功:', data);
-  //     return data;
-  //   } catch (error) {
-  //     console.error('Note保存エラー:', error);
-  //     throw error;
-  //   }
-  // };
 
   // 音声処理用のRef
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -224,25 +234,27 @@ export function RecordingWithIris({
         console.error('Audio Upload Error:', uploadError);
         throw uploadError;
       }
-
+      console.log('Audio Uploaded Successfully:', uploadData);
+      tempAudioPath.current = uploadData?.path ?? "";
+      tempAudioDuration.current = durationSeconds;
       // //NewChatがtrueの時、Conversationsレコード（親）を新規作成
     } catch (error) {
       console.error('Recording complete error:', error);
       alert('処理中にエラーが発生しました');
+      throw error;
     }
   };
-  const saveFinalToSupabase = async (text: string, audioPath: string, audioDuration: number) => {
+  const saveFinalToSupabase = async(
+    text: string,
+    audioPath: string,
+    audioDuration: number,
+  ): Promise<string | null> => {
     try {
       const user_id = userRef.current?.id;
-      const url = `${process.env.NEXT_PUBLIC_FASTAPI_URL}`;
-      console.log('url:', url);
       if (NewChat as boolean === true) {
 
         console.log('New Chat is:', NewChat);
-        let generated_title = text.slice(0, 15) + '...';
-        if (text.length > 15){
-          return generated_title;
-        }
+        const generated_title = text.length > 20 ? text.slice(0, 20) + "..." : text;
         const { data: conversationData, error: conversationError } = await supabase
           .from('conversations')
           .insert({
@@ -281,7 +293,7 @@ export function RecordingWithIris({
           throw messagesError;
         }
         console.log('Messages Created Successfully:', messagesData);
-        router.push(`/discus/${newConversationId}`);
+        return newConversationId;
       } else {
         console.log('New Chat is:', NewChat);
         const WhereAmI = params.id as string;
@@ -308,10 +320,12 @@ export function RecordingWithIris({
           throw ContinueMessagesError;
         }
         console.log('contine Messages Created Successfully:', ContinueMessagesData);
-        router.push(`/discus/${WhereAmI}`);
+
+        return WhereAmI;
       }
     } catch (error) {
       console.error('Final save error:', error);
+      return null;
     }
   }
   // 録音状態の切り替えハンドラー
@@ -320,6 +334,38 @@ export function RecordingWithIris({
     setIsRecording(newState);
     onRecordingChange?.(newState);
   };
+
+  // アシスタントでのAI返信
+  const saveAssistantMessage = async (
+    replyText: string,
+    conversationId: string,
+  ) => {
+    try {
+      const { data: assistantMessageData, error: assistantMessageError } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        role: "assistant",
+        context: replyText,
+        metadata: {
+          action: "llm-reply",
+          status: "success",
+          device: "web"
+        }
+      })
+      .select()
+      .single();
+      if (assistantMessageError){
+        console.error('Assistant Message creation Error:', assistantMessageError);
+        throw assistantMessageError;
+      }
+      console.log('Assistant Message Created Successfully:', assistantMessageData);
+      return assistantMessageData.id;
+    } catch (error) {
+      console.error('Assistant Message creation Error:', error);
+      throw error;
+    }
+  }
 
   // 1. 録音開始・停止処理 /Conversationsの作成
   useEffect(() => {
@@ -613,7 +659,7 @@ export function RecordingWithIris({
                 className={`text-xl tracking-[0.1em] font-bold ${isRecording ? "text-red-400" : "text-cyan-400"
                   }`}
               >
-                {isRecording ? "● LISTENING" : "SYSTEM IDLE"}
+                {isThinking ? "◎ THINKING...🤔" : isRecording ? "● LISTENING" : "SYSTEM IDLE"}
               </motion.div>
             </AnimatePresence>
           </div>
