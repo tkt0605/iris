@@ -41,6 +41,11 @@ export default function DiscussPage() {
 
     // supabaseから会話内容を取得し、URLのIDと、DBのprimary keyの一致を確かめる。
     useEffect(() => {
+        setLoading(true);
+        if (!conversationId) {
+            setLoading(false);
+            return;
+        }
         const fetchMessages = async () => {
             try {
                 const { data, error } = await supabase
@@ -56,6 +61,50 @@ export default function DiscussPage() {
             }
         };
         fetchMessages();
+
+        const channel = supabase
+            .channel(`messages:${conversationId}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "messages",
+                    filter: `conversation_id=eq.${conversationId}`,
+                },
+                (payload) => {
+                    setMessages((prev) => [...prev, payload.new as any]);
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "messages",
+                    filter: `conversation_id=eq.${conversationId}`,
+                },
+                (payload) => {
+                    setMessages((prev) => [...prev, payload.new as any]);
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "messages",
+                    filter: `conversation_id=eq.${conversationId}`,
+                },
+                (payload) => {
+                    setMessages((prev) => [...prev, payload.new as any]);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [conversationId]);
     return (
         <div className="flex items-start gap-16 md:p-4 w-full h-full">
@@ -99,26 +148,33 @@ export default function DiscussPage() {
             </div>
             {/* ここに会話内容(返答の内容)を表示 */}
             <main className="flex-1 overflow-y-auto pt-25">
-
-                {messages.filter((msg) => msg.role === 'assistant').map((msg) => (
-                    <div
-                        key={msg.id}
-                        className={`flex justify-start`}
-                    >
-                        <div className={`max-w-[100%] p-4 `}>
-                            {/* 役割ラベル */}
-                            <div className="text-xs opacity-70 mb-1">
-                                {msg.role === 'assistant' ? 'IRIS' : "あなた"}
-                            </div>
-
-                            {/* 音声プレイヤー */}
-                            {msg.audio_url && (
-                                <audio controls src={msg.audio_url} className="mb-2 w-full h-8" />
-                            )}
-                            <p>{msg.context || "(音声解析中...)"}</p>
-                        </div>
+                {loading ? (
+                    <div className="flex justify-center items-center h-full">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
                     </div>
-                ))}
+                ) : (
+                    <div>
+                        {messages.filter((msg) => msg.role === 'assistant').map((msg) => (
+                            <div
+                                key={msg.id}
+                                className={`flex justify-start`}
+                            >
+                                <div className={`max-w-[100%] p-4 `}>
+                                    {/* 役割ラベル */}
+                                    <div className="text-xs opacity-70 mb-1">
+                                        {msg.role === 'assistant' ? 'IRIS' : "あなた"}
+                                    </div>
+
+                                    {/* 音声プレイヤー */}
+                                    {msg.audio_url && (
+                                        <audio controls src={msg.audio_url} className="mb-2 w-full h-8" />
+                                    )}
+                                    <p>{msg.context || "(音声解析中...)"}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </main>
         </div>
     );

@@ -47,7 +47,9 @@ export function RecordingWithIris({
   const supabase = createClient();
   const worker = useRef<Worker | null>(null);
   const llmworker = useRef<Worker | null>(null);
+  const actionworker = useRef<Worker | null>(null);
   const [transcription, setTranscription] = useState<string>("");
+  const [title, setTitle] = useState<string>('');
   const [isThinking, setIsThinking] = useState<boolean>(false);
   const isThinkingRef = useRef<boolean>(false);
   const [user, setUser] = useState<any>(null);
@@ -88,9 +90,10 @@ export function RecordingWithIris({
     try {
       worker.current = new Worker(new URL("worker.js", import.meta.url), {type: "module"});
       worker.current.onmessage = async (event) => {
-        const { status, output, ...rest} = event.data;
+        const { status, output,  ...rest} = event.data;
         if (status === "complete") {
           const text = output.text;
+          // 音声データ・文字起こし完了
           console.log('🔥 解析完了！テキスト:', text);
           setTranscription(text);
           if (!userRef.current?.id) {
@@ -110,10 +113,12 @@ export function RecordingWithIris({
           currentConversationIdRef.current = convId;
           isThinkingRef.current = true;
           setIsThinking(true);
-
           llmworker.current?.postMessage({
             userText: text,
           })
+          actionworker.current?.postMessage({
+            userText: text
+          });
         }else if (status === "error") {
           console.error('Worker Error:', rest.error);
           alert('Worker Error:' + rest.error);
@@ -131,10 +136,11 @@ export function RecordingWithIris({
     try {
       llmworker.current = new Worker(new URL("llm-worker.js", import.meta.url), { type: "module"});
       llmworker.current.onmessage = async(event) => {
-        const { status, output, ...rest } = event.data;
-        if (status === "complete") {
+        const { status, output, type, ...rest } = event.data;
+        if (status === "complete" && type === "reply" ) {
           isThinkingRef.current = false;
           setIsThinking(false);
+          const reply = output.text;
           console.log('🔥 LLM Worker 解析完了！返答:', output);
           const convId = currentConversationIdRef.current;
 
@@ -145,14 +151,19 @@ export function RecordingWithIris({
             alert("会話履歴が見つかりませんでした。")
           }
           return;
-        }else if (status === "error") {
+        }else if (status === "complete" && type === "title" && NewChat as boolean === true ) {
+          console.log('🔥 New Chat is:', NewChat);
           isThinkingRef.current = false;
           setIsThinking(false);
-          console.error('LLM Worker Error:', rest.error);
-          alert('LLM Worker Error:' + rest.error);
-          if (currentConversationIdRef.current) {
-            router.push(`/discus/${currentConversationIdRef.current}`);
+          console.log('🔥 LLM Worker 解析完了！タイトル:', output);
+          const convId = currentConversationIdRef.current;
+          if (convId) {
+            await updateConversationTitle(convId, output);
+            router.push(`/discus/${convId}`);
+          }else{
+            alert("会話履歴が見つかりませんでした。")
           }
+          return;
         }else if (status === "progress" && rest.progress === 100) {
           console.log('✅ LLM Worker ロード完了'+ rest.progress);
         }
@@ -327,6 +338,30 @@ export function RecordingWithIris({
       console.error('Final save error:', error);
       return null;
     }
+  };
+  // 会話履歴のタイトルを更新
+  const updateConversationTitle = async(conversationId: string, title: string) => {
+    try{
+      const { data: updateData, error: updateError} = await supabase
+      .from('conversations')
+      .update({
+        id: conversationId,
+        title: title,
+      })
+      .eq('id', conversationId)
+      .select()
+      .single();
+
+      if(updateError){
+        console.error('Conversation title update error:', updateError);
+        throw updateError;
+      }
+      console.log('Conversation title updated successfully:', updateData);
+      return updateData;
+    }catch(error) {
+      console.error('Conversation title update error:', error);
+      throw error;
+    }
   }
   // 録音状態の切り替えハンドラー
   const handleToggleRecording = () => {
@@ -360,7 +395,7 @@ export function RecordingWithIris({
         throw assistantMessageError;
       }
       console.log('Assistant Message Created Successfully:', assistantMessageData);
-      return assistantMessageData.id;
+      return conversationId;
     } catch (error) {
       console.error('Assistant Message creation Error:', error);
       throw error;
@@ -425,6 +460,7 @@ export function RecordingWithIris({
             // 音声データと録音時間を処理してページ遷移
             // const role = isRecording ? "user" : "assistant";
             await handleRecordingComplete(audioBlob, durationSeconds);
+            
 
             // 録音開始時刻をリセット
             recordingStartTimeRef.current = null;

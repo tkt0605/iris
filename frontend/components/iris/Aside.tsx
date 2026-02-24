@@ -71,7 +71,7 @@ export function Aside({isOpen, onToggle}: AsideProps) {
 
         // DBの変更をリアルタイムで検知
         const channel = supabase
-            .channel(`conversations:${user.id}`)
+            .channel(`conversations_aside`)
             .on(
                 'postgres_changes',
                 {
@@ -201,7 +201,7 @@ export function Aside({isOpen, onToggle}: AsideProps) {
 
                         {/* Discussion一覧 */}
                         {!loading && !error && discussion && discussion.length > 0 && discussion.map((discuss) => (
-                            <div key={discuss.id} className="flex flex-col py-1 space-y-1 p-3">
+                            <div key={discuss.id} className="flex flex-col py-1 gap-1 p-3">
                                 <button 
                                     className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition text-left"
                                     onClick={() => router.push(`/discus/${discuss.id}`)}

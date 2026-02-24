@@ -22,6 +22,7 @@ class WhisperSignleton{
     }
 }
 
+
 self.addEventListener('message', async(event) => {
     try {
         const {audio} = event.data;

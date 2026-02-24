@@ -53,7 +53,12 @@ export function Header({ isSideOpen }: HeaderProps) {
         return () => subscription.unsubscribe();
     }, []);
     useEffect(() => {
-        if (!conversationId) return;
+        setConversation(null);
+        setConversationLoading(true);
+        if (!conversationId){
+            setConversationLoading(false);
+            return;
+        }
         const fetchConversation = async () => {
             try {
                 if (conversationId) {
@@ -75,6 +80,52 @@ export function Header({ isSideOpen }: HeaderProps) {
             }
         };
         fetchConversation();
+
+        const channel = supabase
+            .channel(`conversations_header`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'conversations',
+                    filter: `user_id=eq.${user?.id}`,
+                },
+                (payload) => {
+                    setConversation((prev: any) => [...prev, payload.new as any]);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'conversations',
+                    filter: `user_id=eq.${user?.id}`,
+                },
+                (payload) => {
+                    setConversation((prev: any) =>
+                        prev.map((d: any) => (d.id === payload.new.id ? (payload.new as any) : d))
+                    );
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'conversations',
+                    filter: `user_id=eq.${user?.id}`,
+                },
+                (payload) => {
+                    setConversation((prev: any) => prev.filter((d: any) => d.id !== payload.old.id));
+                }
+            )
+            .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
     }, [conversationId, supabase]);
     return (
         <header
