@@ -1,12 +1,12 @@
 'use client';
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase";
-interface AsideProps{
+interface AsideProps {
     isOpen: boolean;
-    onToggle: () => void;   
+    onToggle: () => void;
 }
-export function Aside({isOpen, onToggle}: AsideProps) {
+export function Aside({ isOpen, onToggle }: AsideProps) {
     const router = useRouter();
     const supabase = createClient();
     const [user, setUser] = useState<any>(null);
@@ -15,9 +15,36 @@ export function Aside({isOpen, onToggle}: AsideProps) {
     const [error, setError] = useState<string | null>(null);
     const [discussion, setDiscussion] = useState<any[]>([]);
     const [openSearch, setOpenSearch] = useState<boolean>(false);
+    const [openUser, setOpenUser] = useState<boolean>(false);
+    const [action, setAction] = useState<boolean>(false);
+    const userMenuRef = useRef<HTMLDivElement>(null);
+
+    const toggleOpen = () => {
+        setOpenUser((prev) => !prev);
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+                setOpenUser(false);
+            }
+        };
+        if (openUser) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [openUser]);
+
     useEffect(() => {
         setMounted(true);
     }, []);
+    const logout = () => {
+        supabase.auth.signOut();
+        setOpenUser(false);
+        return router.push('/auth/login_signup');
+    };
     useEffect(() => {
         const getAuth = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -132,9 +159,9 @@ export function Aside({isOpen, onToggle}: AsideProps) {
                         </button>
                     }
                     <div className="cursor-pointer rounded-lg  p-2 flex items-center justify-center">
-                        <button onClick={onToggle} aria-label="サイドバーを閉じる"className={[
-                        isOpen ? "text-gray-700  rounded-xl hover:bg-gray-700/20  duration-300 p-2" : "group flex w-full items-center gap-3 rounded-lg p-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition"
-                    ].join(" ")} >
+                        <button onClick={onToggle} aria-label="サイドバーを閉じる" className={[
+                            isOpen ? "text-gray-700  rounded-xl hover:bg-gray-700/20  duration-300 p-2" : "group flex w-full items-center gap-3 rounded-lg p-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition"
+                        ].join(" ")} >
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-layout-sidebar-inset-reverse" viewBox="0 0 16 16">
                                 <path d="M2 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1zm12-1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z" />
                                 <path d="M13 4a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1z" />
@@ -202,7 +229,7 @@ export function Aside({isOpen, onToggle}: AsideProps) {
                         {/* Discussion一覧 */}
                         {!loading && !error && discussion && discussion.length > 0 && discussion.map((discuss) => (
                             <div key={discuss.id} className="flex flex-col py-1 gap-1 p-3">
-                                <button 
+                                <button
                                     className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition text-left"
                                     onClick={() => router.push(`/discus/${discuss.id}`)}
                                 >
@@ -217,13 +244,31 @@ export function Aside({isOpen, onToggle}: AsideProps) {
                     </div>
                 </div>
             }
-            <div className="shrink-0 mt-auto p-2 border-t border-gray-700/20">
-                <div className="cursor-pointer p-2 rounded-lg  hover:bg-black/5  gap-2 flex items-center justify-left">
+            <div ref={userMenuRef} className="shrink-0 mt-auto p-2 border-t border-gray-700/20">
+                <div onClick={toggleOpen} className="cursor-pointer p-2 rounded-lg  hover:bg-black/5  gap-2 flex items-center justify-left">
                     <button className="p-2 rounded-full bg-gray-700/20 duration-200 shadow-sm backdrop-blur-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-person" viewBox="0 0 16 16"> <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z" /> </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-person" viewBox="0 0 16 16">
+                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z" />
+                        </svg>
                     </button>
                     {!isOpen && <div className="text-sm text-gray-500">{user?.user_metadata?.name}</div>}
                 </div>
+                {openUser && (
+                    <div className="absolute left-24 bottom-0 mb-16 w-56 rounded-xl border border-white/10 bg-white/95 backdrop-blur p-3 text-sm shadow-xl z-[9999] overflow-visible">
+                        <div className="mb-2">
+                            <div className="text-xs text-slate-400 mb-0.5">
+                                サインイン中
+                            </div>
+                            <div className="font-medium truncate dark:text-white">
+                                {user?.email ?? "No email"}
+                            </div>
+                        </div>
+                        <div className="my-2 h-px bg-white/5" />
+                        <button onClick={logout} className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-white/5 text-red-700">
+                            ログアウト
+                        </button>
+                    </div>
+                )}
             </div>
         </aside>
     );

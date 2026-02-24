@@ -36,9 +36,10 @@ export default function IndexLayout({ children }: IndexLayoutProps) {
                 {/* {!isOpen && <Aside />} */}
                 <Aside isOpen={isSidebarOpen} onToggle={toggleSidebar} />
             </div>
-            <div className="fixed top-0 left-0 w-full h-14 z-30 pointer-events-none">
-                    <Header isSideOpen={isSidebarOpen}/>
-            </div>
+            {/* <div className="fixed top-0 left-0 w-full h-14 z-30 pointer-events-none">
+                <Header isSideOpen={isSidebarOpen}/>
+            </div> */}
+            <Header isSideOpen={isSidebarOpen}/>
 
             {/* <div className={`
                 relative top-0

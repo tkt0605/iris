@@ -6,13 +6,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useContext } from "react";
 import { Header } from "@/components/iris/Header";
 import { UnLoginHeader } from "@/components/iris/unloginHeader";
-import { ParticleTextReveal } from "@/components/iris/ParticleTextReveal";
 import { Aside } from "@/components/iris/Aside";
-import { supabase } from "@/utils/supabase";
+import { createClient } from "@/utils/supabase";
 
 export default function HomePage() {
   const router = useRouter();
   // Auth（簡易）
+  const supabase = createClient();
   const [user, setUser] = useState<any>(null);
   // const [loading, setLoading] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -47,7 +47,7 @@ export default function HomePage() {
           // 非ログインユーザー時での表示
           <div>
             <UnLoginHeader />
-            <ParticleTextReveal />
+            <div ></div>
           </div>
       }
     </div>

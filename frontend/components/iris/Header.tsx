@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase";
 import { useParams } from "next/navigation";
@@ -16,7 +16,7 @@ type Conversation = {
 export function Header({ isSideOpen }: HeaderProps) {
     const router = useRouter();
     const params = useParams();
-    const conversationId = params.id as string; 
+    const conversationId = params.id as string;
     // const [conversation, setConversation] = useState<Conversation[]>([]);
     const [conversation, setConversation] = useState<any>(null);
     const supabase = createClient();
@@ -24,19 +24,39 @@ export function Header({ isSideOpen }: HeaderProps) {
     const [loading, setLoading] = useState(true);
     const [conversationLoading, setConversationLoading] = useState(true);
     // const router = useRouter();
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState<boolean>(false);
     const [sideOpen, setSideOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [opensearch, setOpenSearch] = useState(false);
+    const userMenuRef = useRef<HTMLDivElement>(null);
     const logout = () => {
         return console.log('ログアウト');
     };
+
+    // ユーザーメニューを開く・閉じる
+    const toggleOpen = () => {
+        setOpen((prev) => !prev);
+    };
+    useEffect(() => {
+        const handleClickOutSide = (e: MouseEvent) => {
+            if(userMenuRef.current && !userMenuRef.current.contains(e.target as Node)){
+                setOpen(false);
+            }
+        };
+        if(open){
+            document.addEventListener('mousedown', handleClickOutSide);
+        }
+        return () => {
+            document.removeEventListener('mousedown',handleClickOutSide);
+        };
+    }, [open]);
     useEffect(() => {
         const saved = localStorage.getItem('AsideOpenStorage');
         if (saved !== null) {
             setSideOpen(saved === "true");
         }
         console.log(sideOpen);
+        console.log('Open:', open);
         setMounted(true);
     }, []);
     useEffect(() => {
@@ -55,7 +75,7 @@ export function Header({ isSideOpen }: HeaderProps) {
     useEffect(() => {
         setConversation(null);
         setConversationLoading(true);
-        if (!conversationId){
+        if (!conversationId) {
             setConversationLoading(false);
             return;
         }
@@ -123,14 +143,14 @@ export function Header({ isSideOpen }: HeaderProps) {
             )
             .subscribe();
 
-            return () => {
-                supabase.removeChannel(channel);
-            };
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [conversationId, supabase]);
     return (
         <header
             className={`
-                fixed top-0 bg-transparent inset-x-0 h-14 z-50 
+                fixed top-0 bg-transparent inset-x-0 h-14 z-10 
                 ${mounted ? "duration-0" : "duration-300"} 
                 ${isSideOpen ? "md:left-16" : "md:left-60"}
             `}
@@ -140,7 +160,7 @@ export function Header({ isSideOpen }: HeaderProps) {
                     <span className="text-2xl font-bold">I.R.I.S</span>
                 </button>
                 <div className="text-2xl font-bold">{conversation?.title || ""}</div>
-                    {/* <div className="md:hidden">
+                {/* <div className="md:hidden">
                         <button onClick={() => router.push('')} className="text-gray-700 hover:text-white rounded-xl hover:bg-white/10 p-2 duration-300">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-layout-sidebar-inset-reverse" viewBox="0 0 16 16">
                                 <path d="M2 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1zm12-1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z" />
@@ -148,22 +168,19 @@ export function Header({ isSideOpen }: HeaderProps) {
                             </svg>
                         </button>
                     </div> */}
-                <div className="flex items-center gap-8 text-sm">
-                    <div className="relative">
-                        {loading ?
-                            <p>loading...</p>
-                            : user ?
-                                <button onClick={() => setOpen((v) => !v)} className="p-2 rounded-full bg-gray-700/20 hover:bg-white/20 transition-all duration-200 shadow-sm backdrop-blur-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-person" viewBox="0 0 16 16"> <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z" /> </svg>
-                                </button>
-                                : <button onClick={() => router.push("/auth/login")} className="px-4 py-1.5 rounded-full bg-white/10 text-cyan-300 hover:bg-white/20 transition">
-                                    ログイン
-                                </button>
-                        }
-                    </div>
+                <div ref={userMenuRef} className="relative">
+                    {loading ?
+                        <p>loading...</p>
+                        : user ?
+                            <button onClick={toggleOpen} className="p-2 rounded-full bg-gray-700/20 hover:bg-white/20 transition-all duration-200 shadow-sm backdrop-blur-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-person" viewBox="0 0 16 16"> <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z" /> </svg>
+                            </button>
+                            : <button onClick={() => router.push("/auth/login")} className="px-4 py-1.5 rounded-full bg-white/10 text-cyan-300 hover:bg-white/20 transition">
+                                ログイン
+                            </button>
+                    }
                     {open && (
-                        <div className="absolute right-0 mt-40 w-56 rounded-xl border border-white/10  bg-white/95 backdrop-blur p-3 text-sm shadow-xl z-[9999] overflow-visible">
-
+                        <div className="absolute right-0 top-0 mt-14 w-56 rounded-xl border border-white/10  bg-white/10 backdrop-blur p-3 text-sm shadow-xl z-[9999] overflow-visible">
                             <div className="mb-2">
                                 <div className="text-xs text-slate-400 mb-0.5">
                                     サインイン中

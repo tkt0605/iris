@@ -110,7 +110,7 @@ export default function DiscussPage() {
         <div className="flex items-start gap-16 md:p-4 w-full h-full">
             {/* <div className="relative z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16 w-full max-w-7xl px-6 py-8"> */}
             {/* ここに音声文字起こしの内容を表示 */}
-            <div className="shrink-0">
+            <div className="shrink-0 ">
                 <RecordingWithIris NewChat={false} transparent={true} onClick={() => setIsNowRecord(true)} />
                 <div className="flex items-center justify-center">
                     <p className="text-cyan-600 text-sm font-medium">
@@ -147,7 +147,7 @@ export default function DiscussPage() {
                 </div>
             </div>
             {/* ここに会話内容(返答の内容)を表示 */}
-            <main className="flex-1 overflow-y-auto pt-25">
+            <main className="flex-1 overflow-y-auto">
                 {loading ? (
                     <div className="flex justify-center items-center h-full">
                         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
