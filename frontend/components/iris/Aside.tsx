@@ -146,16 +146,15 @@ export function Aside({ isOpen, onToggle }: AsideProps) {
     return (
         <aside className={`
             hidden sm:flex flex-col fixed top-0 left-0 h-screen bg-gray-400/5 dark:bg-black gap-2 z-10 border-r border-gray-700/20
-            ${mounted ? "duration-300" : ""}
+            ${mounted ? "duration-500" : "duration-500"}
             ${isOpen ? "w-16" : "w-60"}
         `}>
-            <nav className="shrink-0 space-y-1 z-10">
-                <div className={[
+            <nav className="shrink-0 space-y-1 z-10 ">
+                {/* <div className={[
                     isOpen ? "" : "pl-1 flex items-center justify-between"
                 ].join(" ")}>
                     {!isOpen &&
                         <button className="p-1 px-4 rounded-lg" aria-label="ロゴ">
-                            {/* <span className="text-2xl font-bold tracking-tighter">I/R/I/S</span> */}
                         </button>
                     }
                     <div className="cursor-pointer rounded-lg  p-2 flex items-center justify-center">
@@ -168,9 +167,9 @@ export function Aside({ isOpen, onToggle }: AsideProps) {
                             </svg>
                         </button>
                     </div>
-                </div>
+                </div> */}
 
-                <div className="cursor-pointer rounded-lg gap-2 p-2 flex items-center justify-center  ">
+                <div className="cursor-pointer rounded-lg gap-2 p-2 pt-4 flex items-center justify-center  ">
                     <button className={[
                         isOpen ? "text-gray-700  rounded-xl hover:bg-gray-700/20  duration-300 p-2" : "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition"
                     ].join(" ")} onClick={() => router.push('/home')}>
@@ -181,7 +180,7 @@ export function Aside({ isOpen, onToggle }: AsideProps) {
                         {!isOpen && <span>新しい相談</span>}
                     </button>
                 </div>
-                <div className="cursor-pointer p-2 rounded-lg gap-2 flex items-center justify-center pt-2">
+                {/* <div className="cursor-pointer p-2 rounded-lg gap-2 flex items-center justify-center pt-2">
                     <button className={[
                         isOpen ? "text-gray-700  rounded-xl hover:bg-gray-700/20 p-2 duration-300 " : "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition"
                     ].join(" ")} onClick={() => setOpenSearch(true)} >
@@ -190,7 +189,7 @@ export function Aside({ isOpen, onToggle }: AsideProps) {
                         </svg>
                         {!isOpen && <span>相談を検索する。</span>}
                     </button>
-                </div>
+                </div> */}
             </nav>
             {!isOpen &&
                 <div className="flex-1 overflow-y-auto min-h-0 py-1 space-y-1">

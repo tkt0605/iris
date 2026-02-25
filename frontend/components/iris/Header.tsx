@@ -6,6 +6,8 @@ import { createClient } from "@/utils/supabase";
 import { useParams } from "next/navigation";
 interface HeaderProps {
     isSideOpen: boolean;
+    isOpen: boolean;
+    onToggle: () => void;
 }
 type Conversation = {
     id: string;
@@ -13,7 +15,7 @@ type Conversation = {
     created_at: string;
     is_activate: boolean;
 }
-export function Header({ isSideOpen }: HeaderProps) {
+export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
     const router = useRouter();
     const params = useParams();
     const conversationId = params.id as string;
@@ -37,17 +39,18 @@ export function Header({ isSideOpen }: HeaderProps) {
     const toggleOpen = () => {
         setOpen((prev) => !prev);
     };
+
     useEffect(() => {
         const handleClickOutSide = (e: MouseEvent) => {
-            if(userMenuRef.current && !userMenuRef.current.contains(e.target as Node)){
+            if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
                 setOpen(false);
             }
         };
-        if(open){
+        if (open) {
             document.addEventListener('mousedown', handleClickOutSide);
         }
         return () => {
-            document.removeEventListener('mousedown',handleClickOutSide);
+            document.removeEventListener('mousedown', handleClickOutSide);
         };
     }, [open]);
     useEffect(() => {
@@ -151,14 +154,21 @@ export function Header({ isSideOpen }: HeaderProps) {
         <header
             className={`
                 fixed top-0 bg-transparent inset-x-0 h-14 z-10 
-                ${mounted ? "duration-0" : "duration-300"} 
+                ${mounted ? "duration-500" : "duration-500"} 
                 ${isSideOpen ? "md:left-16" : "md:left-60"}
             `}
         >
             <div className="max-w-9wl mx-auto h-full px-6 sm:px-2 flex items-center justify-between">
-                <button>
-                    <span className="text-2xl font-bold">I.R.I.S</span>
-                </button>
+                <div>
+                    <button onClick={onToggle} aria-label="サイドバーを閉じる" className={[
+                        isOpen ?
+                            "text-gray-700  rounded-xl hover:bg-gray-700/20  duration-300 p-2 "
+                            :
+                            "group flex w-full items-center gap-3 rounded-lg p-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition"
+                    ].join(" ")} >
+                        <span className="text-2xl font-bold">I.R.I.S</span>
+                    </button>
+                </div>
                 <div className="text-2xl font-bold">{conversation?.title || ""}</div>
                 {/* <div className="md:hidden">
                         <button onClick={() => router.push('')} className="text-gray-700 hover:text-white rounded-xl hover:bg-white/10 p-2 duration-300">

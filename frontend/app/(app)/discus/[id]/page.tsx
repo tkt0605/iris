@@ -113,9 +113,9 @@ export default function DiscussPage() {
             <div className="shrink-0 ">
                 <RecordingWithIris NewChat={false} transparent={true} onClick={() => setIsNowRecord(true)} />
                 <div className="flex items-center justify-center">
-                    <p className="text-cyan-600 text-sm font-medium">
+                    {/* <p className="text-cyan-600 text-sm font-medium">
                         クリックして話しかける
-                    </p>
+                    </p> */}
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     <section className=" space-y-4 pt-4">

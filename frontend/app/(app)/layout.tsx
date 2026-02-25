@@ -30,7 +30,7 @@ export default function IndexLayout({ children }: IndexLayoutProps) {
         <div className="relative w-full h-screen overflow-hidden bg-white dark:bg-black">
             <div className={`
                 fixed top-0 left-0 h-full z-40
-                ${mounted ? 'duration-300' : 'duration-300'}
+                ${mounted ? 'duration-500' : 'duration-300'}
                 ${isSidebarOpen ? "w-16" : "w-60"}
             `}>
                 {/* {!isOpen && <Aside />} */}
@@ -39,7 +39,7 @@ export default function IndexLayout({ children }: IndexLayoutProps) {
             {/* <div className="fixed top-0 left-0 w-full h-14 z-30 pointer-events-none">
                 <Header isSideOpen={isSidebarOpen}/>
             </div> */}
-            <Header isSideOpen={isSidebarOpen}/>
+            <Header isSideOpen={isSidebarOpen} isOpen={isSidebarOpen} onToggle={toggleSidebar} />
 
             {/* <div className={`
                 relative top-0

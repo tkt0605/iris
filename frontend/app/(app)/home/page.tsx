@@ -50,21 +50,21 @@ export default function HomePage() {
   const quickActions = [
     {
       title: "新しい会話",
-      description: "左の球体をクリックして話しかけてみましょう",
+      // description: "左の球体をクリックして話しかけてみましょう",
       icon: "💬",
       gradient: "from-cyan-500/10 to-blue-500/10",
       hoverGradient: "from-cyan-500/20 to-blue-500/20",
     },
     {
       title: "過去の会話",
-      description: "これまでの対話履歴を確認できます",
+      // description: "これまでの対話履歴を確認できます",
       icon: "📚",
       gradient: "from-purple-500/10 to-pink-500/10",
       hoverGradient: "from-purple-500/20 to-pink-500/20",
     },
     {
-      title: "ヒント",
-      description: "私は質問応答、アイデア出し、問題解決が得意です",
+      title: "アドバイス",
+      // description: "私は質問応答、アイデア出し、問題解決が得意です",
       icon: "✨",
       gradient: "from-amber-500/10 to-orange-500/10",
       hoverGradient: "from-amber-500/20 to-orange-500/20",
@@ -132,9 +132,9 @@ export default function HomePage() {
             transition={{ delay: 1.5, duration: 0.8 }}
             className="absolute -bottom-12 left-1/2 -translate-x-1/2 text-center"
           >
-            <p className="text-cyan-600 text-sm font-medium">
+            {/* <p className="text-cyan-600 text-sm font-medium">
               クリックして話しかける
-            </p>
+            </p> */}
           </motion.div>
         </motion.div>
 
@@ -195,17 +195,16 @@ export default function HomePage() {
                 onHoverEnd={() => setHoveredCard(null)}
                 className="relative group cursor-pointer"
               >
-                {/* カード背景 */}
                 <motion.div
                   className={`
                     relative p-5 rounded-2xl border border-gray-200
                     bg-gradient-to-br ${hoveredCard === index ? action.hoverGradient : action.gradient}
                     backdrop-blur-sm transition-all duration-300 shadow-sm
                   `}
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.05, y: -5, transition: {type: "tween", duration: 0.3, ease: [0.16, 1, 0.3, 1]} }}
+                  whileTap={{ scale: 0.98, transition: {type: "tween", duration: 0.3, ease: [0.16, 1, 0.3, 1]} }}
+                  // transition={{type: "tween", duration: 0.3, ease: [0.05, 0.9, 0.1, 1.0]}}
                 >
-                  {/* グロー効果 */}
                   <motion.div
                     className="absolute inset-0 rounded-2xl bg-gradient-to-br from-cyan-500/0 to-purple-500/0 group-hover:from-cyan-500/10 group-hover:to-purple-500/10 transition-all duration-300"
                     animate={{
@@ -218,9 +217,9 @@ export default function HomePage() {
                     <h3 className="text-lg font-bold text-gray-800">
                       {action.title}
                     </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
+                    {/* <p className="text-sm text-gray-600 leading-relaxed">
                       {action.description}
-                    </p>
+                    </p> */}
                   </div>
                 </motion.div>
               </motion.div>
@@ -228,7 +227,7 @@ export default function HomePage() {
           </motion.div>
 
           {/* 追加のヒントセクション */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 2 }}
@@ -240,7 +239,7 @@ export default function HomePage() {
               考えを整理したり、アイデアを膨らませたり、
               何でもお気軽にご相談ください。
             </p>
-          </motion.div>
+          </motion.div> */}
         </div>
       </div>
 
