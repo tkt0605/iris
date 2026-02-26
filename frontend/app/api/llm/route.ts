@@ -18,6 +18,7 @@ export async function POST(req: Request) {
             parts: [{ text: m.context }],
         }));
         // ユーザーに対する「reply」・「Title」を並立実行させている。（Promise.all）
+        // 使用する際に用いたモデルは、gemini-2.5-flashです。
         const [replyResult, titleResult] = await Promise.all([
             ai.models.generateContent({
                 model: "gemini-2.5-flash",
@@ -26,7 +27,11 @@ export async function POST(req: Request) {
                     { role: "user", parts: [{ text: userText }] },
                 ],
                 config: {
-                    systemInstruction: "あなたはIRISというAIアシスタントです。ユーザーの音声から文字起こしされたテキストに対して、親切で簡潔な日本語で返答してください。",
+                    systemInstruction: `
+                        あなたはIRISというAIアシスタントです。
+                        LLMはGoogleによってトレーニングされたが、このアプリケーション自体は${process.env.PRODUCTOR}によって開発されています。
+                        ユーザーの音声から文字起こしされたテキストに対して、親切でわかりやすい日本語で返答してください。
+                    `,
                     maxOutputTokens: 512,
                 },
             }),
