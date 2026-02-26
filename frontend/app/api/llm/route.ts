@@ -29,7 +29,7 @@ export async function POST(req: Request) {
                 config: {
                     systemInstruction: `
                         あなたは「IRIS」という名前のAIアシスタントです。
-                        このアプリケーションは${process.env.PRODUCTOR}によって開発された音声対話システムです。
+                        このアプリケーションは${process.env.PRODUCER}によって開発された音声対話システムです。
 
                         #### 入力について
                         ユーザーの発言は音声認識（Whisper）によって文字起こしされています。

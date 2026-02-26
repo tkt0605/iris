@@ -51,7 +51,7 @@ export function RecordingWithIris({
   const supabase = createClient();
   const worker = useRef<Worker | null>(null);
   const llmworker = useRef<Worker | null>(null);
-  const actionworker = useRef<Worker | null>(null);
+  const llm2worker = useRef<Worker | null>(null);
   const [transcription, setTranscription] = useState<string>("");
   const [title, setTitle] = useState<string>('');
   const [isThinking, setIsThinking] = useState<boolean>(false);
@@ -88,23 +88,53 @@ export function RecordingWithIris({
     return () => subscription.unsubscribe();
   }, []);
 
-  // Workerの初期化 worker.js/llm-worker.js
+  // Workerの初期化 worker.js / llm-worker.js(PRODUCTION) / llm2-worker.js(LOCAL)
   useEffect(() => {
-    // worker.js
+    const isLocal = process.env.NEXT_PUBLIC_NOW_DEVELOPMENT === "LOCAL";
+
+    // LLMワーカーの共通onmessageハンドラ
+    const handleLLMMessage = async (event: MessageEvent) => {
+      const { status, output, type, ...rest } = event.data;
+      if (status === "complete" && type === "reply") {
+        isThinkingRef.current = false;
+        setIsThinking(false);
+        console.log('🔥 LLM Worker 解析完了！返答:', output);
+        const convId = currentConversationIdRef.current;
+        if (convId) {
+          await saveAssistantMessage(output, replyAudioPath.current, convId);
+          router.push(`/discus/${convId}`);
+        } else {
+          alert("会話履歴が見つかりませんでした。");
+        }
+      } else if (status === "complete" && type === "title" && NewChat === true) {
+        isThinkingRef.current = false;
+        setIsThinking(false);
+        console.log('🔥 LLM Worker 解析完了！タイトル:', output);
+        const convId = currentConversationIdRef.current;
+        if (convId) {
+          await updateConversationTitle(convId, output);
+          router.push(`/discus/${convId}`);
+        } else {
+          alert("会話履歴が見つかりませんでした。");
+        }
+      } else if (status === "progress" && rest.progress === 100) {
+        console.log('✅ LLM Worker ロード完了', rest.progress);
+      }
+    };
+
+    // worker.js（Whisper 文字起こし）
     try {
-      worker.current = new Worker(new URL("worker.js", import.meta.url), {type: "module"});
+      worker.current = new Worker(new URL("worker.js", import.meta.url), { type: "module" });
       worker.current.onmessage = async (event) => {
-        const { status, output,  ...rest} = event.data;
+        const { status, output, ...rest } = event.data;
         if (status === "complete") {
           const text = output.text;
-          // 音声データ・文字起こし完了
           console.log('🔥 解析完了！テキスト:', text);
           setTranscription(text);
           if (!userRef.current?.id) {
             alert('ログインが必要です');
             return router.push('/auth/login_signup');
           }
-
           const convId = await saveFinalToSupabase(
             text,
             tempAudioPath.current,
@@ -117,59 +147,35 @@ export function RecordingWithIris({
           currentConversationIdRef.current = convId;
           isThinkingRef.current = true;
           setIsThinking(true);
-          llmworker.current?.postMessage({
-            userText: text,
-          })
-          actionworker.current?.postMessage({
-            userText: text
-          });
-        }else if (status === "error") {
+          // 環境に応じてどちらか一方のLLMワーカーにのみ送信
+          if (isLocal) {
+            llm2worker.current?.postMessage({ userText: text });
+          } else {
+            llmworker.current?.postMessage({ userText: text });
+          }
+        } else if (status === "error") {
           console.error('Worker Error:', rest.error);
           alert('Worker Error:' + rest.error);
-          return;
-        }else if (status === "progress" && rest.progress === 100) {
-          console.log('✅ Whisper Worker ロード完了'+ rest.file);
+        } else if (status === "progress" && rest.progress === 100) {
+          console.log('✅ Whisper Worker ロード完了', rest.file);
         }
-      }
+      };
     } catch (error) {
       console.error('Worker initialization error:', error);
       alert('Worker initialization error:' + error);
       return;
     }
-    // llm-worker.js
-    try {
-      llmworker.current = new Worker(new URL("llm-worker.js", import.meta.url), { type: "module"});
-      llmworker.current.onmessage = async(event) => {
-        const { status, output, type, ...rest } = event.data;
-        if (status === "complete" && type === "reply" ) {
-          isThinkingRef.current = false;
-          setIsThinking(false);
-          console.log('🔥 LLM Worker 解析完了！返答:', output);
-          const convId = currentConversationIdRef.current;
 
-          if (convId) {
-            await saveAssistantMessage(output, replyAudioPath.current, convId);
-            router.push(`/discus/${convId}`);
-          }else{
-            alert("会話履歴が見つかりませんでした。")
-          }
-          return;
-        }else if (status === "complete" && type === "title" && NewChat as boolean === true ) {
-          console.log('🔥 New Chat is:', NewChat);
-          isThinkingRef.current = false;
-          setIsThinking(false);
-          console.log('🔥 LLM Worker 解析完了！タイトル:', output);
-          const convId = currentConversationIdRef.current;
-          if (convId) {
-            await updateConversationTitle(convId, output);
-            router.push(`/discus/${convId}`);
-          }else{
-            alert("会話履歴が見つかりませんでした。")
-          }
-          return;
-        }else if (status === "progress" && rest.progress === 100) {
-          console.log('✅ LLM Worker ロード完了'+ rest.progress);
-        }
+    // LLMワーカーの初期化（環境で切り替え）
+    try {
+      if (isLocal) {
+        console.log('🛠 開発環境: llm2-worker.js (DeepSeek R1 ONNX) を使用');
+        llm2worker.current = new Worker(new URL("llm2-worker.js", import.meta.url), { type: "module" });
+        llm2worker.current.onmessage = handleLLMMessage;
+      } else {
+        console.log('🚀 本番環境: llm-worker.js (Gemini 2.5 Flash) を使用');
+        llmworker.current = new Worker(new URL("llm-worker.js", import.meta.url), { type: "module" });
+        llmworker.current.onmessage = handleLLMMessage;
       }
     } catch (error) {
       console.error('LLM Worker initialization error:', error);
@@ -182,6 +188,8 @@ export function RecordingWithIris({
       worker.current = null;
       llmworker.current?.terminate();
       llmworker.current = null;
+      llm2worker.current?.terminate();
+      llm2worker.current = null;
     };
   }, []);
   // BolbをFolat32Arrayに変換して、Worker.jsへ。
