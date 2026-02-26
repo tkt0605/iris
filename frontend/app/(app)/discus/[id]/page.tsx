@@ -4,9 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/utils/supabase";
 import { RecordingWithIris } from "@/components/iris/RecordingWithIris";
-import { Session } from "inspector/promises";
-import { div } from "framer-motion/client";
 import { useParams } from "next/navigation";
+import { motion } from "framer-motion";
 
 type Message = {
     id: string;
@@ -16,166 +15,195 @@ type Message = {
     created_at: string;
 }
 
+function formatTime(dateStr: string) {
+    return new Date(dateStr).toLocaleTimeString("ja-JP", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+    });
+}
+
+function MessageItem({ msg, index }: { msg: Message; index: number }) {
+    const isUser = msg.role === "user";
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.04, ease: [0.16, 1, 0.3, 1] }}
+            className="group py-7"
+        >
+            {/* ロールラベル + タイムスタンプ */}
+            <div className="flex items-baseline gap-3 mb-3">
+                <span className={`text-[11px] font-mono font-bold tracking-[0.2em] uppercase ${
+                    isUser ? "text-gray-400" : "text-cyan-500"
+                }`}>
+                    {isUser ? "あなた" : "◉ IRIS"}
+                </span>
+                <span className="text-[11px] font-mono text-gray-300">
+                    {formatTime(msg.created_at)}
+                </span>
+            </div>
+
+            {/* IRIS メッセージ: 左にシアンのアクセントライン */}
+            <div className={isUser ? "" : "border-l-2 border-cyan-400/50 pl-5"}>
+                {/* 音声プレイヤー (ユーザーのみ) */}
+                {isUser && msg.audio_url && (
+                    <audio
+                        controls
+                        src={msg.audio_url}
+                        className="mb-3 h-7 w-full max-w-[280px] opacity-50 hover:opacity-100 transition-opacity duration-200"
+                    />
+                )}
+
+                {/* 本文 */}
+                <p className={`leading-relaxed whitespace-pre-wrap ${
+                    isUser
+                        ? "text-sm text-gray-500"
+                        : "text-base text-gray-800 font-medium"
+                }`}>
+                    {msg.context || (
+                        <span className="text-gray-300 animate-pulse text-sm font-mono tracking-wider">
+                            processing...
+                        </span>
+                    )}
+                </p>
+            </div>
+        </motion.div>
+    );
+}
+
 export default function DiscussPage() {
-    const router = useRouter();
     const params = useParams();
     const conversationId = params.id as string;
     const supabase = createClient();
-    const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [messages, setMessages] = useState<Message[]>([]);
-    const [isNowRecord, setIsNowRecord] = useState(false);
-    useEffect(() => {
-        const getAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setUser(session?.user ?? null);
-            setLoading(false);
-        };
-        getAuth();
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-            setLoading(false);
-        });
-        return () => subscription.unsubscribe();
-    }, []);
+    const bottomRef = useRef<HTMLDivElement>(null);
 
-    // supabaseから会話内容を取得し、URLのIDと、DBのprimary keyの一致を確かめる。
     useEffect(() => {
-        setLoading(true);
-        if (!conversationId) {
-            setLoading(false);
-            return;
-        }
+        if (!conversationId) { setLoading(false); return; }
+
         const fetchMessages = async () => {
+            setLoading(true);
             try {
-                const { data, error } = await supabase
-                    .from('messages').
-                    select('*')
-                    .eq('conversation_id', conversationId)
-                    .order('created_at', { ascending: false });
-                if (data) setMessages(data);
-                console.log('Messages fetched:', data);
-            } catch (error) {
-                console.error('Messages fetch error:', error);
-                throw error;
+                const { data } = await supabase
+                    .from("messages")
+                    .select("*")
+                    .eq("conversation_id", conversationId)
+                    .order("created_at", { ascending: true });
+
+                if (data) {
+                    const withUrls = data.map((msg) => {
+                        if (msg.audio_url && !msg.audio_url.startsWith("https://")) {
+                            const { data: urlData } = supabase.storage
+                                .from("audio-recordings")
+                                .getPublicUrl(msg.audio_url);
+                            return { ...msg, audio_url: urlData.publicUrl };
+                        }
+                        return msg;
+                    });
+                    setMessages(withUrls);
+                }
+            } finally {
+                setLoading(false);
             }
         };
+
         fetchMessages();
 
         const channel = supabase
             .channel(`messages:${conversationId}`)
             .on(
                 "postgres_changes",
-                {
-                    event: "INSERT",
-                    schema: "public",
-                    table: "messages",
-                    filter: `conversation_id=eq.${conversationId}`,
-                },
+                { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
                 (payload) => {
-                    setMessages((prev) => [...prev, payload.new as any]);
-                }
-            )
-            .on(
-                "postgres_changes",
-                {
-                    event: "UPDATE",
-                    schema: "public",
-                    table: "messages",
-                    filter: `conversation_id=eq.${conversationId}`,
-                },
-                (payload) => {
-                    setMessages((prev) => [...prev, payload.new as any]);
-                }
-            )
-            .on(
-                "postgres_changes",
-                {
-                    event: "DELETE",
-                    schema: "public",
-                    table: "messages",
-                    filter: `conversation_id=eq.${conversationId}`,
-                },
-                (payload) => {
-                    setMessages((prev) => [...prev, payload.new as any]);
+                    const msg = payload.new as Message;
+                    if (msg.audio_url && !msg.audio_url.startsWith("https://")) {
+                        const { data: urlData } = supabase.storage
+                            .from("audio-recordings")
+                            .getPublicUrl(msg.audio_url);
+                        msg.audio_url = urlData.publicUrl;
+                    }
+                    setMessages((prev) => [...prev, msg]);
                 }
             )
             .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
     }, [conversationId]);
-    return (
-        <div className="flex items-start gap-16 md:p-4 w-full h-full">
-            {/* <div className="relative z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16 w-full max-w-7xl px-6 py-8"> */}
-            {/* ここに音声文字起こしの内容を表示 */}
-            <div className="shrink-0 ">
-                <RecordingWithIris NewChat={false} transparent={true} onClick={() => setIsNowRecord(true)} />
-                <div className="flex items-center justify-center">
-                    {/* <p className="text-cyan-600 text-sm font-medium">
-                        クリックして話しかける
-                    </p> */}
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                    <section className=" space-y-4 pt-4">
-                        <div className="flex flex-col gap-4">
-                            <div className="flex-1 space-y-6">
-                                {/* ユーザーの会話内容を表示 */}
-                                {messages.filter((msg) => msg.role === "user").map((msg) => (
-                                    <div
-                                        key={msg.id}
-                                        className={`flex justify-end`}
-                                    >
-                                        <div className={`max-w-[80%] p-4 rounded-xl bg-blue-600 text-white`}>
-                                            {/* 役割ラベル */}
-                                            <div className="text-xs opacity-70 mb-1">
-                                                {msg.role === "user" ? "あなた" : "IRIS"}
-                                            </div>
 
-                                            {/* 音声プレイヤー */}
-                                            {msg.audio_url && (
-                                                <audio controls src={msg.audio_url} className="mb-2 w-full h-8" />
-                                            )}
-                                            <p>{msg.context || "(音声解析中...)"}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+    // 新着メッセージへ自動スクロール
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
+    const sessionDate = messages[0]
+        ? new Date(messages[0].created_at).toLocaleDateString("ja-JP", {
+              year: "numeric", month: "long", day: "numeric",
+          })
+        : "";
+    const exchangeCount = Math.floor(
+        messages.filter((m) => m.role === "user").length
+    );
+
+    return (
+        <div className="flex h-full">
+            {/* 左: 録音球体エリア (固定幅) */}
+            <div className="shrink-0 flex flex-col items-center pt-6">
+                <RecordingWithIris
+                    NewChat={false}
+                    transparent={true}
+                    width={400}
+                    height={400}
+                    CORE_PARTICLE_COUNT={1000}
+                    CORE_RADIUS={40}
+                />
+            </div>
+
+            {/* 右: トランスクリプトエリア */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* セッションヘッダー */}
+                <div className="shrink-0 border-b border-gray-100 dark:border-gray-800 px-8 py-3 flex items-center gap-3 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
+                    <span className="text-[11px] font-mono font-bold tracking-[0.2em] text-cyan-500">
+                        対話セッション
+                    </span>
+                    {sessionDate && (
+                        <>
+                            <span className="text-gray-200 dark:text-gray-700">·</span>
+                            <span className="text-[11px] font-mono text-gray-400">{sessionDate}</span>
+                            <span className="text-gray-200 dark:text-gray-700">·</span>
+                            <span className="text-[11px] font-mono text-gray-400">
+                                {exchangeCount} {exchangeCount === 1 ? "交換" : "交換"}
+                            </span>
+                        </>
+                    )}
+                </div>
+
+                {/* メッセージリスト */}
+                <div className="flex-1 overflow-y-auto px-8 py-2">
+                    {loading ? (
+                        <div className="flex items-center justify-center h-48">
+                            <span className="text-[11px] font-mono text-cyan-500 animate-pulse tracking-[0.3em]">
+                                LOADING SESSION...
+                            </span>
                         </div>
-                    </section>
+                    ) : messages.length === 0 ? (
+                        <div className="flex items-center justify-center h-48">
+                            <span className="text-[11px] font-mono text-gray-300 tracking-[0.2em]">
+                                NO RECORDS
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="max-w-3xl divide-y divide-gray-100 dark:divide-gray-800/60">
+                            {messages.map((msg, i) => (
+                                <MessageItem key={msg.id} msg={msg} index={i} />
+                            ))}
+                            <div ref={bottomRef} className="h-8" />
+                        </div>
+                    )}
                 </div>
             </div>
-            {/* ここに会話内容(返答の内容)を表示 */}
-            <main className="flex-1 overflow-y-auto">
-                {loading ? (
-                    <div className="flex justify-center items-center h-full">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-                    </div>
-                ) : (
-                    <div>
-                        {messages.filter((msg) => msg.role === 'assistant').map((msg) => (
-                            <div
-                                key={msg.id}
-                                className={`flex justify-start`}
-                            >
-                                <div className={`max-w-[100%] p-4 `}>
-                                    {/* 役割ラベル */}
-                                    <div className="text-xs opacity-70 mb-1">
-                                        {msg.role === 'assistant' ? 'IRIS' : "あなた"}
-                                    </div>
-
-                                    {/* 音声プレイヤー */}
-                                    {msg.audio_url && (
-                                        <audio controls src={msg.audio_url} className="mb-2 w-full h-8" />
-                                    )}
-                                    <p>{msg.context || "(音声解析中...)"}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </main>
         </div>
     );
 }

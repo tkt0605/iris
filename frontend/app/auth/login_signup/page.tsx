@@ -87,7 +87,7 @@ export default function Loginpage() {
 
                 {/* ヘッダー部分 */}
                 <div className="text-center">
-                <span className="text-4xl text-black font-bold tracking-tighter">I/R/I/S</span>
+                <span className="text-4xl text-black font-bold tracking-tighter">I.R.I.S</span>
                     <h3 className="mt-6 text-xl font-extrabold text-gray-900">
                         {isSignup ? 'アカウント作成' : 'ログイン'}
                     </h3>

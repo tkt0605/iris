@@ -119,6 +119,8 @@ export default function HomePage() {
             <RecordingWithIris 
               width={500} 
               height={500}
+              CORE_PARTICLE_COUNT={1500}
+              CORE_RADIUS={60}
               transparent={true} 
               onClick={() => setIsNowRecord(true)}
               NewChat={true}

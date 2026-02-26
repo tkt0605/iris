@@ -4,8 +4,8 @@ import { motion, useMotionValue, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase";
 import { useRouter, useParams } from "next/navigation";
 // 設定パラメータ
-const CORE_PARTICLE_COUNT = 1500; // 中心の粒子数
-const CORE_RADIUS = 60; // 中心半径
+// const CORE_PARTICLE_COUNT = 1000; // 中心の粒子数
+// const CORE_RADIUS = 40; // 中心半径
 const ORBIT_COUNT = 5; // 周りの軌道数
 
 // 待機時の色 (Cyan)
@@ -16,6 +16,8 @@ const BASE_COLOR_RED = { r: 248, g: 113, b: 113 };
 interface RecordingWithIrisProps {
   width?: number | string;      // 幅 (デフォルト: 600px)
   height?: number | string;     // 高さ (デフォルト: 600px)
+  CORE_PARTICLE_COUNT?: number; // 中心の粒子数
+  CORE_RADIUS?: number; // 中心半径
   className?: string;           // 追加のクラス名
   fullScreen?: boolean;         // 全画面表示モード
   showUI?: boolean;             // UIオーバーレイの表示 (デフォルト: false)
@@ -31,6 +33,8 @@ interface RecordingWithIrisProps {
 export function RecordingWithIris({
   width = 400,
   height = 400,
+  CORE_PARTICLE_COUNT = 1000,
+  CORE_RADIUS = 40,
   className = "",
   fullScreen = false,
   showUI = false,
@@ -57,7 +61,7 @@ export function RecordingWithIris({
   const [loading, setLoading] = useState(true);
   const tempAudioPath = useRef<string>("");
   const tempAudioDuration = useRef<number>(0);
-
+  const replyAudioPath = useRef<string>("");
   const [isRecording, setIsRecording] = useState(false);
   const [isDone, setIsDown] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -140,12 +144,11 @@ export function RecordingWithIris({
         if (status === "complete" && type === "reply" ) {
           isThinkingRef.current = false;
           setIsThinking(false);
-          const reply = output.text;
           console.log('🔥 LLM Worker 解析完了！返答:', output);
           const convId = currentConversationIdRef.current;
 
           if (convId) {
-            await saveAssistantMessage(output, convId);
+            await saveAssistantMessage(output, replyAudioPath.current, convId);
             router.push(`/discus/${convId}`);
           }else{
             alert("会話履歴が見つかりませんでした。")
@@ -373,6 +376,7 @@ export function RecordingWithIris({
   // アシスタントでのAI返信
   const saveAssistantMessage = async (
     replyText: string,
+    audioPath: string,
     conversationId: string,
   ) => {
     try {
@@ -382,6 +386,7 @@ export function RecordingWithIris({
         conversation_id: conversationId,
         role: "assistant",
         context: replyText,
+        audio_url: audioPath,
         metadata: {
           action: "llm-reply",
           status: "success",

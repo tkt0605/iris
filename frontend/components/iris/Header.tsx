@@ -32,7 +32,8 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
     const [opensearch, setOpenSearch] = useState(false);
     const userMenuRef = useRef<HTMLDivElement>(null);
     const logout = () => {
-        return console.log('ログアウト');
+        supabase.auth.signOut();
+        return router.push('/auth/login_signup');
     };
 
     // ユーザーメニューを開く・閉じる
