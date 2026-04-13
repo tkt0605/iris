@@ -2,12 +2,12 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: ../backend/Dockerfile
+      dockerfile: Dockerfile
     image: iris-backend
     ports: 
      - 8000:8000
     volumes:
-      - ../backend:/workspaces/backend:cached
+      - ./backend:/workspaces/backend:cached
     networks:
       - iris-network
     env_file:
@@ -17,13 +17,13 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: ../frontend/Dockerfile
+      dockerfile: Dockerfile
     image:
       iris-frontend
     ports:
       - 3000:3000
     volumes:
-      - ../frontend:/workspaces/frontend:cached
+      - ./frontend:/workspaces/frontend:cached
       - /workspaces/frontend/node_modules
     networks:
       - iris-network
