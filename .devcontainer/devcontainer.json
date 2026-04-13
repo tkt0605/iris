@@ -1,51 +1,36 @@
 {
-  "name": "Iris Backend Development",
-  "dockerComposeFile": [
-    "${localWorkspaceFolder}/backend/docker/docker-compose.yml",
-    "${localWorkspaceFolder}/backend/docker/docker-compose.devcontainer.yml"
-  ],
+  "name": "Iris Dev Containers",
+  "dockerComposeFile": "compose.yml",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:1": {}
+  },
   "service": "backend",
-  "workspaceFolder": "/app",
-  "remoteUser": "appuser",
-
-  "forwardPorts": [8080],
-  "portsAttributes": {
-    "8080": {
-      "label": "Backend API",
-      "onAutoForward": "notify"
-    }
+  "workspaceFolder": "/workspaces/backend",
+  "postCreateCommand": {
+    "venv": "[ -d .venv ] || uv venv .venv",
+    "sync": "cd /workspaces/backend && uv sync --no-dev"
   },
-
-  "containerEnv": {
-    "PYTHONPATH": "/app"
-  },
-
+  "postStartCommand": "git config --global --add safe.directory /workspaces/backend",
   "customizations": {
     "vscode": {
-      "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
-        "python.analysis.typeCheckingMode": "basic",
-        "python.formatting.provider": "black",
-        "python.linting.enabled": true,
-        "python.linting.flake8Enabled": true,
-        "python.linting.mypyEnabled": true,
-        "editor.formatOnSave": true,
-        "editor.codeActionsOnSave": {
-          "source.organizeImports": true
-        },
-        "terminal.integrated.defaultProfile.linux": "bash"
-      },
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance",
-        "ms-python.black-formatter",
-        "ms-azuretools.vscode-docker",
-        "njpwerner.autodocstring",
-        "tamasfe.even-better-toml"
-      ]
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspaces/backend/.venv/bin/python",
+        "python.languageServer": "Pylance",
+        "editor.formatOnSave": true
+      }
     }
   },
-
-  "postCreateCommand": "pip install --no-cache-dir black flake8 mypy 2>/dev/null || true",
-  "postStartCommand": "echo 'Backend API: http://localhost:8080'"
+  "remoteUser": "vscode",
+  "remoteEnv": {
+    "PATH": "/workspaces/backend/.venv/bin:${containerEnv:PATH}"
+  },
+  "forwardPorts": [
+    8000
+  ]
 }

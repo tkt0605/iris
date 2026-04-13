@@ -1,0 +1,48 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../backend/Dockerfile
+    image: iris-backend
+    ports: 
+     - 8000:8000
+    volumes:
+      - ../backend:/workspaces/backend:cached
+    networks:
+      - iris-network
+    env_file:
+      - .env
+    depends_on:
+      - db
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../frontend/Dockerfile
+    image:
+      iris-frontend
+    ports:
+      - 3000:3000
+    volumes:
+      - ../frontend:/workspaces/frontend:cached
+      - /workspaces/frontend/node_modules
+    networks:
+      - iris-network
+    depends_on:
+      - backend
+  db:
+    image: postgres:16
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d
+    networks:
+      - iris-network
+networks:
+  iris-network:
+    driver: bridge
+volumes:
+  postgres_data:
