@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import init_pool, close_pool
 from app.routers import llm, conversations
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """起動時にDBプールを初期化、終了時にクローズ"""
@@ -31,3 +30,8 @@ app.include_router(conversations.router, prefix="/api")
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
+@app.get('/')
+async def index() -> dict:
+    return {
+       "message": "Hello World"
+    }

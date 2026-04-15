@@ -7,10 +7,10 @@ from app.core.config import settings
 
 router = APIRouter()
 
-# Geminiクライアント初期化（モジュールロード時に一度だけ実行）
-genai.configure(api_key=settings.GEMINI_API_KEY)
 
-_SYSTEM_INSTRUCTION = f"""
+def _get_system_instruction() -> str:
+    """lifespan後に呼ばれるため、settings参照を遅延評価する"""
+    return f"""
 あなたは「IRIS」という名前のAIアシスタントです。
 このアプリケーションは{settings.PRODUCER}によって開発された音声対話システムです。
 
@@ -64,9 +64,11 @@ async def call_llm(
         for m in body.conversationHistory
     ]
 
+    # リクエスト時にGeminiを初期化（import時実行を避ける）
+    genai.configure(api_key=settings.GEMINI_API_KEY)
     reply_model = genai.GenerativeModel(
         "gemini-2.5-flash",
-        system_instruction=_SYSTEM_INSTRUCTION,
+        system_instruction=_get_system_instruction(),
     )
     title_model = genai.GenerativeModel("gemini-2.5-flash")
 
