@@ -59,34 +59,29 @@ export function Aside({ isOpen, onToggle }: AsideProps) {
         return () => subscription.unsubscribe();
     }, []);
 
-    // Discussions取得 + Realtimeサブスクリプション（ユーザーログイン後のみ実行）
+    // 会話一覧をFastAPI経由で取得（3秒ポーリング）
     useEffect(() => {
         if (!user?.id) {
             setDiscussion([]);
             return;
         }
 
-        const getDiscussion = async () => {
+        const fetchDiscussions = async () => {
             try {
-                setLoading(true);
                 setError(null);
+                const { data: { session } } = await supabase.auth.getSession();
+                const token = session?.access_token ?? "";
+                const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 
-                const { data, error } = await supabase
-                    .from("conversations")
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false });
-
-                if (error) {
-                    console.error('Discussion fetch error:', error);
-                    throw error;
-                }
-
-                console.log('Discussions fetched:', data);
-                setDiscussion(data || []);
+                const res = await fetch(`${backendUrl}/api/conversations`, {
+                    headers: { "Authorization": `Bearer ${token}` },
+                });
+                if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+                const data = await res.json();
+                setDiscussion(data);
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error);
-                console.error('Error in getDiscussion:', errorMessage);
+                console.error('Error in fetchDiscussions:', errorMessage);
                 setError("相談の取得に失敗しました: " + errorMessage);
                 setDiscussion([]);
             } finally {
@@ -94,55 +89,11 @@ export function Aside({ isOpen, onToggle }: AsideProps) {
             }
         };
 
-        getDiscussion();
-
-        // DBの変更をリアルタイムで検知
-        const channel = supabase
-            .channel(`conversations_aside`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'conversations',
-                    filter: `user_id=eq.${user.id}`,
-                },
-                (payload) => {
-                    setDiscussion((prev) => [...prev, payload.new as any]);
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'conversations',
-                    filter: `user_id=eq.${user.id}`,
-                },
-                (payload) => {
-                    setDiscussion((prev) =>
-                        prev.map((d) => (d.id === payload.new.id ? (payload.new as any) : d))
-                    );
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'DELETE',
-                    schema: 'public',
-                    table: 'conversations',
-                    filter: `user_id=eq.${user.id}`,
-                },
-                (payload) => {
-                    setDiscussion((prev) => prev.filter((d) => d.id !== payload.old.id));
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [user?.id]); // user.idが変わったときのみ実行
+        fetchDiscussions();
+        // 3秒ポーリングで新着を反映
+        const interval = setInterval(fetchDiscussions, 3000);
+        return () => clearInterval(interval);
+    }, [user?.id]);
     return (
         <aside className={`
             hidden sm:flex flex-col fixed top-0 left-0 h-screen bg-gray-400/5 dark:bg-black gap-2 z-10 border-r border-gray-700/20

@@ -28,7 +28,7 @@ class DeepSeekR1Singleton {
 
 self.addEventListener('message', async (event) => {
     // catchブロックからもアクセスできるようtryの外で宣言
-    const { userText, conversationHistory } = event.data;
+    const { userText, conversationHistory, token, backendUrl } = event.data;
     try {
 
         const generator = await DeepSeekR1Singleton.getInstance((data) => {
@@ -87,22 +87,26 @@ self.addEventListener('message', async (event) => {
         self.postMessage({ status: "complete", type: "title", output: title });
 
     } catch (error) {
-        // WebGPU 非対応の場合は Gemini API にフォールバック
+        // WebGPU 非対応の場合はFastAPIにフォールバック
         if (error?.message === "NO_WEBGPU") {
-            console.warn("[DeepSeek R1] WebGPU 非対応のため Gemini API にフォールバックします");
-            // try {
-            //     const response = await fetch(new URL("/api/llm", self.location.origin), {
-            //         method: "POST",
-            //         headers: { "Content-Type": "application/json" },
-            //         body: JSON.stringify({ userText, conversationHistory }),
-            //     });
-            //     if (!response.ok) throw new Error("Gemini API Error");
-            //     const { reply, title } = await response.json();
-            //     self.postMessage({ status: "complete", type: "reply", output: reply });
-            //     self.postMessage({ status: "complete", type: "title", output: title });
-            // } catch (apiError) {
-            //     self.postMessage({ status: "error", error: String(apiError) });
-            // }
+            console.warn("[DeepSeek R1] WebGPU 非対応のためFastAPIにフォールバックします");
+            try {
+                const url = backendUrl ? `${backendUrl}/api/llm` : "http://localhost:8000/api/llm";
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ userText, conversationHistory: conversationHistory || [] }),
+                });
+                if (!response.ok) throw new Error("FastAPI Error");
+                const { reply, title } = await response.json();
+                self.postMessage({ status: "complete", type: "reply", output: reply });
+                self.postMessage({ status: "complete", type: "title", output: title });
+            } catch (apiError) {
+                self.postMessage({ status: "error", error: String(apiError) });
+            }
             return;
         }
         console.error('DeepSeek R1 Worker Error 型:', typeof error);

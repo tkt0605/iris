@@ -84,53 +84,39 @@ export default function DiscussPage() {
     useEffect(() => {
         if (!conversationId) { setLoading(false); return; }
 
-        const fetchMessages = async () => {
-            setLoading(true);
-            try {
-                const { data } = await supabase
-                    .from("messages")
-                    .select("*")
-                    .eq("conversation_id", conversationId)
-                    .order("created_at", { ascending: true });
+        // audio_urlをSupabase Storageの公開URLに変換するヘルパー
+        const resolveAudioUrl = (msg: Message): Message => {
+            if (msg.audio_url && !msg.audio_url.startsWith("https://")) {
+                const { data: urlData } = supabase.storage
+                    .from("audio-recordings")
+                    .getPublicUrl(msg.audio_url);
+                return { ...msg, audio_url: urlData.publicUrl };
+            }
+            return msg;
+        };
 
-                if (data) {
-                    const withUrls = data.map((msg) => {
-                        if (msg.audio_url && !msg.audio_url.startsWith("https://")) {
-                            const { data: urlData } = supabase.storage
-                                .from("audio-recordings")
-                                .getPublicUrl(msg.audio_url);
-                            return { ...msg, audio_url: urlData.publicUrl };
-                        }
-                        return msg;
-                    });
-                    setMessages(withUrls);
-                }
+        const fetchMessages = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const token = session?.access_token ?? "";
+                const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+
+                const res = await fetch(
+                    `${backendUrl}/api/conversations/${conversationId}/messages`,
+                    { headers: { "Authorization": `Bearer ${token}` } }
+                );
+                if (!res.ok) return;
+                const data: Message[] = await res.json();
+                setMessages(data.map(resolveAudioUrl));
             } finally {
                 setLoading(false);
             }
         };
 
         fetchMessages();
-
-        const channel = supabase
-            .channel(`messages:${conversationId}`)
-            .on(
-                "postgres_changes",
-                { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
-                (payload) => {
-                    const msg = payload.new as Message;
-                    if (msg.audio_url && !msg.audio_url.startsWith("https://")) {
-                        const { data: urlData } = supabase.storage
-                            .from("audio-recordings")
-                            .getPublicUrl(msg.audio_url);
-                        msg.audio_url = urlData.publicUrl;
-                    }
-                    setMessages((prev) => [...prev, msg]);
-                }
-            )
-            .subscribe();
-
-        return () => { supabase.removeChannel(channel); };
+        // 3秒ポーリングで新着メッセージを反映
+        const interval = setInterval(fetchMessages, 3000);
+        return () => clearInterval(interval);
     }, [conversationId]);
 
     // 新着メッセージへ自動スクロール

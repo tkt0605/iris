@@ -4,8 +4,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     image: iris-backend
-    ports: 
-     - 8000:8000
+    ports:
+      - 8000:8000
     volumes:
       - ./backend:/workspaces/backend:cached
     networks:
@@ -18,8 +18,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image:
-      iris-frontend
+    image: iris-frontend
     ports:
       - 3000:3000
     volumes:
@@ -27,6 +26,8 @@ services:
       - /workspaces/frontend/node_modules
     networks:
       - iris-network
+    env_file:
+      - .env
     depends_on:
       - backend
   db:
@@ -38,7 +39,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - iris-network
 networks:

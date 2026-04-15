@@ -147,11 +147,15 @@ export function RecordingWithIris({
           currentConversationIdRef.current = convId;
           isThinkingRef.current = true;
           setIsThinking(true);
+          // セッショントークンを取得してWorkerに渡す
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token ?? "";
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
           // 環境に応じてどちらか一方のLLMワーカーにのみ送信
           if (isLocal) {
-            llm2worker.current?.postMessage({ userText: text });
+            llm2worker.current?.postMessage({ userText: text, token, backendUrl });
           } else {
-            llmworker.current?.postMessage({ userText: text });
+            llmworker.current?.postMessage({ userText: text, token, backendUrl });
           }
         } else if (status === "error") {
           console.error('Worker Error:', rest.error);
@@ -266,110 +270,79 @@ export function RecordingWithIris({
       throw error;
     }
   };
+  // 会話・メッセージをFastAPI経由でPostgreSQLに保存する
   const saveFinalToSupabase = async(
     text: string,
     audioPath: string,
     audioDuration: number,
   ): Promise<string | null> => {
     try {
-      const user_id = userRef.current?.id;
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      };
+
+      let conversationId: string;
+
       if (NewChat as boolean === true) {
-
-        console.log('New Chat is:', NewChat);
+        // 新規会話を作成
         const generated_title = text.length > 20 ? text.slice(0, 20) + "..." : text;
-        const { data: conversationData, error: conversationError } = await supabase
-          .from('conversations')
-          .insert({
-            user_id: user_id,
-            title: generated_title,
-            is_activate: true,
-          })
-          .select()
-          .single();
-        if (conversationError) {
-          console.error('Conversation creation error:', conversationError);
-          throw conversationError;
-        }
-        const newConversationId = conversationData.id;
-        console.log('New ConverSation Created:', newConversationId);
-
-        // Messagesレコード（子）を作成
-        const { data: messagesData, error: messagesError } = await supabase
-          .from('messages')
-          .insert({
-            conversation_id: newConversationId,
-            role: "user",
-            context: text,
-            audio_url: audioPath,
-            audio_duration: audioDuration,
-            metadata: {
-              action: "record",
-              status: "success",
-              device: "web"
-            }
-          })
-          .select()
-          .single();
-        if (messagesError) {
-          console.error('Messages creation error:', messagesError);
-          throw messagesError;
-        }
-        console.log('Messages Created Successfully:', messagesData);
-        return newConversationId;
+        const convRes = await fetch(`${backendUrl}/api/conversations`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ title: generated_title, is_activate: true }),
+        });
+        if (!convRes.ok) throw new Error(`Conversation creation failed: ${convRes.status}`);
+        const convData = await convRes.json();
+        conversationId = convData.id;
+        console.log('New Conversation Created:', conversationId);
       } else {
-        console.log('New Chat is:', NewChat);
-        const WhereAmI = params.id as string;
-        console.log('Where Am I?:', WhereAmI);
-        const { data: ContinueMessagesData, error: ContinueMessagesError } = await supabase
-          .from('messages')
-          .insert({
-            conversation_id: WhereAmI,
-            role: "user",
-            context: text,
-            audio_url: audioPath,
-            audio_duration: audioDuration,
-            metadata: {
-              action: "record",
-              status: "success",
-              device: "web"
-            }
-          })
-          .select()
-          .single();
-        if (ContinueMessagesError) {
-          console.log("I am here:", WhereAmI);
-          console.error('Continue Messages creation Error:', ContinueMessagesError);
-          throw ContinueMessagesError;
-        }
-        console.log('contine Messages Created Successfully:', ContinueMessagesData);
-
-        return WhereAmI;
+        conversationId = params.id as string;
+        console.log('Continuing conversation:', conversationId);
       }
+
+      // メッセージを追加
+      const msgRes = await fetch(`${backendUrl}/api/conversations/${conversationId}/messages`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          role: "user",
+          context: text,
+          audio_url: audioPath,
+          audio_duration: audioDuration,
+          metadata: { action: "record", status: "success", device: "web" },
+        }),
+      });
+      if (!msgRes.ok) throw new Error(`Message creation failed: ${msgRes.status}`);
+      console.log('Message Created Successfully');
+      return conversationId;
     } catch (error) {
       console.error('Final save error:', error);
       return null;
     }
   };
-  // 会話履歴のタイトルを更新
+  // 会話タイトルをFastAPI経由で更新
   const updateConversationTitle = async(conversationId: string, title: string) => {
-    try{
-      const { data: updateData, error: updateError} = await supabase
-      .from('conversations')
-      .update({
-        id: conversationId,
-        title: title,
-      })
-      .eq('id', conversationId)
-      .select()
-      .single();
-
-      if(updateError){
-        console.error('Conversation title update error:', updateError);
-        throw updateError;
-      }
-      console.log('Conversation title updated successfully:', updateData);
-      return updateData;
-    }catch(error) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+      const res = await fetch(`${backendUrl}/api/conversations/${conversationId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) throw new Error(`Title update failed: ${res.status}`);
+      const data = await res.json();
+      console.log('Conversation title updated successfully:', data);
+      return data;
+    } catch (error) {
       console.error('Conversation title update error:', error);
       throw error;
     }
@@ -381,33 +354,31 @@ export function RecordingWithIris({
     onRecordingChange?.(newState);
   };
 
-  // アシスタントでのAI返信
+  // AI返信メッセージをFastAPI経由で保存
   const saveAssistantMessage = async (
     replyText: string,
     audioPath: string,
     conversationId: string,
   ) => {
     try {
-      const { data: assistantMessageData, error: assistantMessageError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        role: "assistant",
-        context: replyText,
-        audio_url: audioPath,
-        metadata: {
-          action: "llm-reply",
-          status: "success",
-          device: "web"
-        }
-      })
-      .select()
-      .single();
-      if (assistantMessageError){
-        console.error('Assistant Message creation Error:', assistantMessageError);
-        throw assistantMessageError;
-      }
-      console.log('Assistant Message Created Successfully:', assistantMessageData);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+      const res = await fetch(`${backendUrl}/api/conversations/${conversationId}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          role: "assistant",
+          context: replyText,
+          audio_url: audioPath,
+          metadata: { action: "llm-reply", status: "success", device: "web" },
+        }),
+      });
+      if (!res.ok) throw new Error(`Assistant message save failed: ${res.status}`);
+      console.log('Assistant Message Created Successfully');
       return conversationId;
     } catch (error) {
       console.error('Assistant Message creation Error:', error);

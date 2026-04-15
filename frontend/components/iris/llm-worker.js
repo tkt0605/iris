@@ -1,35 +1,30 @@
+// FastAPI バックエンド（/api/llm）を呼び出すWorker
+// backendUrl と token はメインスレッドから postMessage で受け取る
 self.addEventListener('message', async (event) => {
     try {
-        const { userText, conversationHistory } = event.data;
-        const apiUrl = process.env.LLM_API_URL;
-        const response = await fetch(new URL("/api/llm", self.location.origin), {
+        const { userText, conversationHistory, token, backendUrl } = event.data;
+        const url = `${backendUrl}/api/llm`;
+
+        const response = await fetch(url, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userText, conversationHistory }),
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify({ userText, conversationHistory: conversationHistory || [] }),
         });
 
         if (!response.ok) {
             const err = await response.json();
-            throw new Error(err.error || "API Error");
+            throw new Error(err.detail || err.error || "API Error");
         }
 
         const { reply, title } = await response.json();
 
-        self.postMessage({
-            status: "complete",
-            type: "reply",
-            output: reply,
-        });
-        self.postMessage({
-            status: "complete",
-            type: "title",
-            output: title,
-        });
+        self.postMessage({ status: "complete", type: "reply", output: reply });
+        self.postMessage({ status: "complete", type: "title", output: title });
     } catch (error) {
         console.error('LLM Worker Error:', error);
-        self.postMessage({
-            status: "error",
-            error: String(error),
-        });
+        self.postMessage({ status: "error", error: String(error) });
     }
 });
