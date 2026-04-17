@@ -1,36 +1,35 @@
 {
-  "name": "Iris Dev Containers",
-  "dockerComposeFile": "compose.yml",
+  "name": "I.R.I.S Backend Dev Container",
+  "build": {
+    "dockerfile": "../backend/Dockerfile"
+  },
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:1": {}
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "vscode",
+      "uid": "1000",
+      "gid": "1000"
+    }
   },
-  "service": "backend",
-  "workspaceFolder": "/workspaces/backend",
-  "postCreateCommand": {
-    "venv": "[ -d .venv ] || uv venv .venv",
-    "sync": "cd /workspaces/backend && uv sync --no-dev"
-  },
-  "postStartCommand": "git config --global --add safe.directory /workspaces/backend",
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-python.python",
         "ms-python.vscode-pylance",
-        "esbenp.prettier-vscode",
-        "dbaeumer.vscode-eslint"
+        "tamasfe.even-better-toml",
+        "ethinvaz.z3-explorer",
+        "bungcip.better-toml"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/workspaces/backend/.venv/bin/python",
-        "python.languageServer": "Pylance",
-        "editor.formatOnSave": true
+        "python.defaultInterpreterPath": "/workspaces/backend/.venv/bin/python"
       }
     }
   },
   "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/backend",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/backend,type=bind,consistency=cached",
+  "postCreateCommand": "sudo chown -R vscode:vscode /workspaces/backend && [ -d .venv ] || uv venv .venv && uv sync",
   "remoteEnv": {
     "PATH": "/workspaces/backend/.venv/bin:${containerEnv:PATH}"
   },
-  "forwardPorts": [
-    8000
-  ]
+  "forwardPorts": [8000]
 }
