@@ -1,8 +1,9 @@
 {
   "name": "I.R.I.S Backend Dev Container",
-  "build": {
-    "dockerfile": "../backend/Dockerfile"
-  },
+  "dockerComposeFile": [
+    "../../compose.yml"
+  ],
+  "service": "backend",
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "username": "vscode",
@@ -24,10 +25,9 @@
       }
     }
   },
-  "remoteUser": "vscode",
+  // "remoteUser": "vscode",
   "workspaceFolder": "/workspaces/backend",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/backend,type=bind,consistency=cached",
-  "postCreateCommand": "sudo chown -R vscode:vscode /workspaces/backend && [ -d .venv ] || uv venv .venv && uv sync",
+  "postCreateCommand": "sudo chown -R vscode:vscode /workspaces/backend && cd /workspaces/backend && [ -d .venv ] || uv venv .venv && uv sync",
   "remoteEnv": {
     "PATH": "/workspaces/backend/.venv/bin:${containerEnv:PATH}"
   },

@@ -13,4 +13,5 @@ WORKDIR /workspaces/frontend
 
 COPY package*.json ./
 RUN npm install
-CMD ["sh", "-c", "npm install && npm run dev -- --hostname 0.0.0.0"]
+COPY . .
+CMD ["sh", "-c", "npm run dev -- --hostname 0.0.0.0"]

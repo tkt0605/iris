@@ -23,7 +23,7 @@ services:
     ports:
       - 3000:3000
     volumes:
-      - ./frontend:/workspaces/frontend:cached
+      - ./frontend:/workspaces/frontend
       - /workspaces/frontend/node_modules
     networks:
       - iris-network

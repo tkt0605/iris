@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
@@ -29,7 +30,7 @@ WHERE user_id = $1
 ORDER BY created_at DESC
 """
 DATABASE_POST_CODE="""
-INSERT INTO conversations (user_id, titile, is_activate)
+INSERT INTO conversations (user_id, title, is_activate)
 VALUES ($1, $2, $3)
 RETURNING id, user_id, title, is_activate, created_at, updated_at
 """
@@ -48,6 +49,11 @@ ORDER BY created_at ASC
 CONVERSATION_OWNER_CODE="""
 SELECT user_id FROM conversations WHERE id =$1
 """
+MESSAGE_POST_CODE="""
+INSERT INTO messages (conversation_id, role, context, audio_url, audio_duration, metadata)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, conversation_id, role, context, audio_url, audio_duration, metadata, created_at
+"""
 @router.get("/conversations")
 async def list_conversations(
     user_id: str = Depends(get_current_user),
@@ -65,7 +71,7 @@ async def create_conversations(
     user_id: str = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db)
 ) -> dict:
-    row = await db.fetch(DATABASE_POST_CODE, uuid.UUID(user_id), body.title, body.is_activate)
+    row = await db.fetchrow(DATABASE_POST_CODE, uuid.UUID(user_id), body.title, body.is_activate)
     return dict(row)
 
 @router.patch("/conversations/{conversation_id}")
@@ -75,12 +81,12 @@ async def update_conversations(
     user_id: str = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db),
 ) -> dict:
-    row = await db.fetch(DATABASE_UPDATE_CODE, body.title, uuid.UUID(conversation_id), uuid.UUID(user_id))
+    row = await db.fetchrow(DATABASE_UPDATE_CODE, body.title, uuid.UUID(conversation_id), uuid.UUID(user_id))
     if not row:
         raise HTTPException(status_code=404, detail="会話が見つかりません。")
     return dict(row)
 
-@router.get("/conversations/{conversation_id}/message")
+@router.get("/conversations/{conversation_id}/messages")
 async def list_message(
     conversation_id: str,
     user_id: str = Depends(get_current_user),
@@ -91,7 +97,32 @@ async def list_message(
         uuid.UUID(conversation_id)
     )
     if not owner:
-        raise HTTPException(status_code=408, detail="アクセス権無し")
-    row = db.fetch(MESSAGE_GET_CODE, uuid.UUID(conversation_id))
+        raise HTTPException(status_code=403, detail="アクセス権無し")
+    row = await db.fetch(MESSAGE_GET_CODE, uuid.UUID(conversation_id))
     return [dict(r) for r in row]
 
+@router.post('/conversations/{conversation_id}/messages', status_code=201)
+async def create_message(
+    conversation_id: str,
+    body: MessgaeCreate,
+    user_id: str = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db)
+) -> dict:
+    if body.role not in ("user", "assistant"):
+        raise HTTPException(status_code=400, detail="roleは User か Assistant のみ")
+    owner = await db.fetchval(
+        CONVERSATION_OWNER_CODE,
+        uuid.UUID(conversation_id)
+    )
+    if not owner or str(owner) != user_id:
+        raise HTTPException(status_code=403, detail="アクセス権はありません。")
+    row = await db.fetch(
+        MESSAGE_POST_CODE,
+        uuid.UUID(conversation_id),
+        body.role,
+        body.context,
+        body.audio_url,
+        body.audio_duration,
+        json.dumps(body.metadata or {})
+    )
+    return dict(row)

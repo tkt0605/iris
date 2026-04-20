@@ -1,0 +1,38 @@
+{
+  "name": "I.R.I.S Frontend Dev Container",
+  "dockerComposeFile": [
+    "../../compose.yml"
+  ],
+  "service": "frontend",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "vscode",
+      "uid": "1000",
+      "gid": "1000"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-typescript-next"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      }
+    }
+  },
+  // "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/frontend",
+  "mounts": [
+    "source=frontend-node-modules,target=/workspaces/frontend/node_modules,type=volume"
+  ],
+  "postCreateCommand": "sudo chown -R $(whoami):$(whoami) /workspaces/frontend/node_modules && cd /workspaces/frontend && npm install",
+  "forwardPorts": [3000]
+}

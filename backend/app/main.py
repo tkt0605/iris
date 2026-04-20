@@ -10,8 +10,6 @@ async def lifespan(app: FastAPI):
     await close_pool()
 app = FastAPI(title="I.R.I.S Backend", lifespan=lifespan)
 
-fastapi = FastAPI()
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
