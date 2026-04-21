@@ -4,12 +4,12 @@ import React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase";
-import SigninWithGoogle from "@/components/auth/SigninWithGoogle";
-import { RequestCookiesAdapter } from "next/dist/server/web/spec-extension/adapters/request-cookies";
+import { User } from "@supabase/supabase-js";
+import Image from "next/image";
 export default function Loginpage() {
     const router = useRouter();
     const supabase = createClient();
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<User | null>();
     const [loading, setLoading] = useState(false);
     const [isSignup, setIsSignUp] = useState(false);
     const [email, setEmail] = useState("");
@@ -80,7 +80,7 @@ export default function Loginpage() {
         });
         console.log('ログインユーザー：', user);
         return () => subscription.unsubscribe();
-      }, []);
+    }, [user]);
     return (
         <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
             <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-xl shadow-lg border border-gray-100">
@@ -99,10 +99,12 @@ export default function Loginpage() {
                         onClick={handleLoginWithGoogle}
                         className="flex w-full justify-center items-center gap-3 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all"
                     >
-                        <img
-                            src="https://www.svgrepo.com/show/475656/google-color.svg"
-                            alt="Google logo"
-                            className="h-5 w-5"
+                        <Image
+                         src="https://www.svgrepo.com/show/475656/google-color.svg"
+                         alt="Google logo"
+                        //  className="h-5 w-5"
+                         width={20}
+                         height={20}
                         />
                         Googleで続行
                     </button>

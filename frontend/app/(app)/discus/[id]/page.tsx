@@ -1,6 +1,4 @@
 "use client";
-
-import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/utils/supabase";
 import { RecordingWithIris } from "@/components/iris/RecordingWithIris";
@@ -52,7 +50,7 @@ function MessageItem({ msg, index }: { msg: Message; index: number }) {
                     <audio
                         controls
                         src={msg.audio_url}
-                        className="mb-3 h-7 w-full max-w-[280px] opacity-50 hover:opacity-100 transition-opacity duration-200"
+                        className="mb-3 h-7 w-full max-w-60 opacity-50 hover:opacity-100 transition-opacity duration-200"
                     />
                 )}
 
@@ -117,7 +115,7 @@ export default function DiscussPage() {
         // 3秒ポーリングで新着メッセージを反映
         const interval = setInterval(fetchMessages, 3000);
         return () => clearInterval(interval);
-    }, [conversationId]);
+    }, []);
 
     // 新着メッセージへ自動スクロール
     useEffect(() => {

@@ -1,9 +1,10 @@
 "use client";
-import React from "react";
+import React, { useEffectEvent } from "react";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase";
 import { useParams } from "next/navigation";
+import { User } from "@supabase/supabase-js";
 interface HeaderProps {
     isSideOpen: boolean;
     isOpen: boolean;
@@ -20,19 +21,23 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
     const params = useParams();
     const conversationId = params.id as string;
     // const [conversation, setConversation] = useState<Conversation[]>([]);
-    const [conversation, setConversation] = useState<any>(null);
-    const supabase = createClient();
-    const [user, setUser] = useState<any>(null);
+    const [conversation, setConversation] = useState<string | null>(null);
+    const supabase = useRef(createClient());
+    const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [conversationLoading, setConversationLoading] = useState(true);
     // const router = useRouter();
     const [open, setOpen] = useState<boolean>(false);
-    const [sideOpen, setSideOpen] = useState(false);
-    const [mounted, setMounted] = useState(false);
+
+    // const [sideOpen, setSideOpen] = useState(() => {
+    //     if (typeof window==="undefined") return false;
+    //     return localStorage.getItem('AsideOpenStorage') === "true";
+    // });
+
     const [opensearch, setOpenSearch] = useState(false);
     const userMenuRef = useRef<HTMLDivElement>(null);
     const logout = () => {
-        supabase.auth.signOut();
+        supabase.current.auth.signOut();
         return router.push('/auth/login_signup');
     };
 
@@ -55,38 +60,23 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
         };
     }, [open]);
     useEffect(() => {
-        const saved = localStorage.getItem('AsideOpenStorage');
-        if (saved !== null) {
-            setSideOpen(saved === "true");
-        }
-        console.log(sideOpen);
-        console.log('Open:', open);
-        setMounted(true);
-    }, []);
-    useEffect(() => {
         const getAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setUser(session?.user ?? null);
+            const { data: { session } } = await supabase.current.auth.getSession();
+            setUser(session?.user ?? null)
             setLoading(false);
         };
         getAuth();
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.current.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null);
             setLoading(false);
         });
         return () => subscription.unsubscribe();
     }, []);
     useEffect(() => {
-        setConversation(null);
-        setConversationLoading(true);
-        if (!conversationId) {
-            setConversationLoading(false);
-            return;
-        }
         const fetchConversation = async () => {
             try {
                 if (conversationId) {
-                    const { data, error } = await supabase
+                    const { data } = await supabase.current
                         .from('conversations')
                         .select('*')
                         .eq('id', conversationId)
@@ -104,8 +94,7 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
             }
         };
         fetchConversation();
-
-        const channel = supabase
+        const channel = supabase.current
             .channel(`conversations_header`)
             .on(
                 'postgres_changes',
@@ -148,14 +137,13 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            supabase.current.removeChannel(channel);
         };
-    }, [conversationId, supabase]);
+    }, [conversationId]);
     return (
         <header
             className={`
                 fixed top-0 bg-transparent inset-x-0 h-14 z-10 
-                ${mounted ? "duration-500" : "duration-500"} 
                 ${isSideOpen ? "md:left-16" : "md:left-60"}
             `}
         >

@@ -1,7 +1,7 @@
 'use client';
-import { supabase } from "@/utils/supabase";
-import { div } from "framer-motion/client";
+import { createClient } from "@/utils/supabase";
 export default function SigninWithGoogle(){
+    const supabase = createClient();
     const handleGoogleLogin = async() => {
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',

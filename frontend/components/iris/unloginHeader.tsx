@@ -5,15 +5,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase";
 import { User } from "@supabase/supabase-js";
-import { ReactServerDOMTurbopackServer } from "next/dist/server/route-modules/app-page/vendored/rsc/entrypoints";
 export function UnLoginHeader() {
     const router = useRouter();
     const supabase = createClient();
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<User | null>();
     const [loading, setLoading] = useState(true);
     // const router = useRouter();
     const [open, setOpen] = useState(false);
-    const [sideOpen, setSideOpen] = useState<any>(false);
+    const [sideOpen, setSideOpen] = useState(() => {
+        if (typeof window==="undefined")return false;
+        return localStorage.getItem('AsideOpenStorage') === "true";
+    });
     const [opensearch, setOpenSearch] = useState(false);
     useEffect(() => {
         const getAuth = async () => {
@@ -21,7 +23,7 @@ export function UnLoginHeader() {
             setUser(session?.user ?? null);
             setLoading(false);
         };
-        getAuth
+        getAuth();
 
         const { data: { subscription }} = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null);
