@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffectEvent } from "react";
+import React from "react";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase";
@@ -20,21 +20,11 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
     const router = useRouter();
     const params = useParams();
     const conversationId = params.id as string;
-    // const [conversation, setConversation] = useState<Conversation[]>([]);
-    const [conversation, setConversation] = useState<string | null>(null);
+    const [conversation, setConversation] = useState<Conversation | null>(null);
     const supabase = useRef(createClient());
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const [conversationLoading, setConversationLoading] = useState(true);
-    // const router = useRouter();
     const [open, setOpen] = useState<boolean>(false);
-
-    // const [sideOpen, setSideOpen] = useState(() => {
-    //     if (typeof window==="undefined") return false;
-    //     return localStorage.getItem('AsideOpenStorage') === "true";
-    // });
-
-    const [opensearch, setOpenSearch] = useState(false);
     const userMenuRef = useRef<HTMLDivElement>(null);
     const logout = () => {
         supabase.current.auth.signOut();
@@ -82,11 +72,8 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
                         .eq('id', conversationId)
                         .single();
                     if (data) {
-                        setConversation(data);
-                        setConversationLoading(false);
+                        setConversation(data as Conversation);
                     }
-                } else {
-                    setConversationLoading(false);
                 }
             } catch (error) {
                 console.error('Conversation fetch error:', error);
@@ -104,9 +91,7 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
                     table: 'conversations',
                     filter: `user_id=eq.${user?.id}`,
                 },
-                (payload) => {
-                    setConversation((prev: any) => [...prev, payload.new as any]);
-                }
+                () => { /* 新規会話はヘッダーに影響しない */ }
             )
             .on(
                 'postgres_changes',
@@ -117,9 +102,9 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
                     filter: `user_id=eq.${user?.id}`,
                 },
                 (payload) => {
-                    setConversation((prev: any) =>
-                        prev.map((d: any) => (d.id === payload.new.id ? (payload.new as any) : d))
-                    );
+                    if (payload.new.id === conversationId) {
+                        setConversation(payload.new as Conversation);
+                    }
                 }
             )
             .on(
@@ -131,7 +116,9 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
                     filter: `user_id=eq.${user?.id}`,
                 },
                 (payload) => {
-                    setConversation((prev: any) => prev.filter((d: any) => d.id !== payload.old.id));
+                    if (payload.old.id === conversationId) {
+                        setConversation(null);
+                    }
                 }
             )
             .subscribe();
@@ -139,7 +126,7 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
         return () => {
             supabase.current.removeChannel(channel);
         };
-    }, [conversationId]);
+    }, [user?.id]);
     return (
         <header
             className={`
@@ -179,7 +166,7 @@ export function Header({ isSideOpen, isOpen, onToggle }: HeaderProps) {
                             </button>
                     }
                     {open && (
-                        <div className="absolute right-0 top-0 mt-14 w-56 rounded-xl border border-white/10  bg-white/10 backdrop-blur p-3 text-sm shadow-xl z-[9999] overflow-visible">
+                        <div className="absolute right-0 top-0 mt-14 w-56 rounded-xl border border-white/10  bg-white/10 backdrop-blur p-3 text-sm shadow-xl z-999 overflow-visible">
                             <div className="mb-2">
                                 <div className="text-xs text-slate-400 mb-0.5">
                                     サインイン中

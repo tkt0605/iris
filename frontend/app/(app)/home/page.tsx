@@ -1,15 +1,10 @@
 "use client";
-
-import { difference } from "next/dist/build/utils";
-import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState, useContext } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Header } from "@/components/iris/Header";
-import { UnLoginHeader } from "@/components/iris/unloginHeader";
-import { Aside } from "@/components/iris/Aside";
+import { useEffect, useState} from "react";
+import { motion} from "framer-motion";
 import { RecordingWithIris } from "@/components/iris/RecordingWithIris";
 import { createClient } from "@/utils/supabase";
+import { User } from "@supabase/supabase-js";
 
 export default function HomePage() {
   const router = useRouter();
@@ -17,7 +12,7 @@ export default function HomePage() {
   const routeId = params.id as string;
   // Auth（簡易）
   const supabase = createClient();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [dimensions, setDimensions] = useState(
     {width: 0, height: 0}
@@ -44,7 +39,7 @@ export default function HomePage() {
       console.log('ログインユーザー：', session?.user?.user_metadata?.name);
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [user?.id]);
 
   // クイックアクションカード
   const quickActions = [

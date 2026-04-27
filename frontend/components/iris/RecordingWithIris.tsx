@@ -1,8 +1,9 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { motion, useMotionValue, AnimatePresence } from "framer-motion";
+import { motion, useMotionValue, AnimatePresence, m } from "framer-motion";
 import { createClient } from "@/utils/supabase";
 import { useRouter, useParams } from "next/navigation";
+import { User } from "@supabase/supabase-js";
 // 設定パラメータ
 // const CORE_PARTICLE_COUNT = 1000; // 中心の粒子数
 // const CORE_RADIUS = 40; // 中心半径
@@ -56,7 +57,7 @@ export function RecordingWithIris({
   const [title, setTitle] = useState<string>('');
   const [isThinking, setIsThinking] = useState<boolean>(false);
   const isThinkingRef = useRef<boolean>(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const userRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const tempAudioPath = useRef<string>("");
@@ -152,10 +153,27 @@ export function RecordingWithIris({
           const token = session?.access_token ?? "";
           const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
           // 環境に応じてどちらか一方のLLMワーカーにのみ送信
+          let conversationHistory: {role: string; context: string}[] = [];
+          try {
+            const historyRes = await fetch(`${backendUrl}/api/conversations/${convId}/messages`, {
+              headers: {
+                "Authorization": `Bearer ${token}`
+              }
+            });
+            if (historyRes.ok){
+              const msgs = await historyRes.json();
+              conversationHistory = msgs.slice(0, -1).map((m: {role: string; context: string}) => ({
+                role: m.role,
+                context: m.context,
+              }));
+            }
+          } catch (error) {
+            console.warn('会話履歴の取得に失敗しました。空履歴で継続します:', error);
+          }
           if (isLocal) {
-            llm2worker.current?.postMessage({ userText: text, token, backendUrl });
+            llm2worker.current?.postMessage({ userText: text, conversationHistory, token, backendUrl });
           } else {
-            llmworker.current?.postMessage({ userText: text, token, backendUrl });
+            llmworker.current?.postMessage({ userText: text, conversationHistory, token, backendUrl });
           }
         } else if (status === "error") {
           console.error('Worker Error:', rest.error);
@@ -521,7 +539,8 @@ export function RecordingWithIris({
     window.addEventListener('resize', setSize);
 
     // 粒子データの初期化
-    const coreParticles: any[] = [];
+    type CoreParticle = { basePos: { x: number; y: number; z: number } };
+    const coreParticles: CoreParticle[] = [];
     const phi = Math.PI * (3 - Math.sqrt(5));
     for (let i = 0; i < CORE_PARTICLE_COUNT; i++) {
       const y = 1 - (i / (CORE_PARTICLE_COUNT - 1)) * 2;

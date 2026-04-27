@@ -116,7 +116,7 @@ async def create_message(
     )
     if not owner or str(owner) != user_id:
         raise HTTPException(status_code=403, detail="アクセス権はありません。")
-    row = await db.fetch(
+    row = await db.fetchrow(
         MESSAGE_POST_CODE,
         uuid.UUID(conversation_id),
         body.role,

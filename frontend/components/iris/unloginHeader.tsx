@@ -11,12 +11,6 @@ export function UnLoginHeader() {
     const [user, setUser] = useState<User | null>();
     const [loading, setLoading] = useState(true);
     // const router = useRouter();
-    const [open, setOpen] = useState(false);
-    const [sideOpen, setSideOpen] = useState(() => {
-        if (typeof window==="undefined")return false;
-        return localStorage.getItem('AsideOpenStorage') === "true";
-    });
-    const [opensearch, setOpenSearch] = useState(false);
     useEffect(() => {
         const getAuth = async () => {
             const { data: {session} } = await supabase.auth.getSession();
@@ -31,7 +25,7 @@ export function UnLoginHeader() {
         });
 
         return () => subscription.unsubscribe();
-    }, []);
+    }, [user?.id]);
     return (
         <header className="fixed top-0 left-0 inset-x-0 h-14 z-30">
             <div className="max-w-9wl mx-auto h-full md:px-36 sm:px-36 flex items-center justify-between gap-3">

@@ -27,9 +27,9 @@ export default function Loginpage() {
             if (error) throw error;
             router.push('/home');
             router.refresh();
-        } catch (error: any) {
+        } catch (error: unknown) {
             setMessage({
-                text: error.message,
+                text: error instanceof Error ? error.message : '予期しないエラーが発生しました',
                 type: 'error'
             })
         }
@@ -61,8 +61,8 @@ export default function Loginpage() {
                 router.push('/home');
                 router.refresh();
             }
-        } catch (error: any) {
-            setMessage({ text: error.message, type: 'error' })
+        } catch (error: unknown) {
+            setMessage({ text: error instanceof Error ? error.message : '予期しないエラーが発生しました', type: 'error' })
         } finally {
             setLoading(false)
         }
@@ -80,7 +80,7 @@ export default function Loginpage() {
         });
         console.log('ログインユーザー：', user);
         return () => subscription.unsubscribe();
-    }, [user]);
+    }, [user?.id]);
     return (
         <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
             <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-xl shadow-lg border border-gray-100">

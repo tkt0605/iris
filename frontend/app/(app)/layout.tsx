@@ -2,8 +2,6 @@
 import React, { useState, useEffect, useEffectEvent } from "react";
 import { Header } from "@/components/iris/Header";
 import { Aside } from "@/components/iris/Aside";
-import { RecordingWithIris } from "@/components/iris/RecordingWithIris";
-
 
 interface IndexLayoutProps {
     children: React.ReactNode
@@ -12,7 +10,6 @@ interface IndexLayoutProps {
 export default function IndexLayout({ children }: IndexLayoutProps) {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const [isNowRecord, setIsNowRecord] = useState(false);
     useEffect(() => {
         const saved = localStorage.getItem('AsideOpenStorage');
         // console.log(saved);
@@ -33,21 +30,9 @@ export default function IndexLayout({ children }: IndexLayoutProps) {
                 ${mounted ? 'duration-500' : 'duration-300'}
                 ${isSidebarOpen ? "w-16" : "w-60"}
             `}>
-                {/* {!isOpen && <Aside />} */}
                 <Aside isOpen={isSidebarOpen} onToggle={toggleSidebar} />
             </div>
-            {/* <div className="fixed top-0 left-0 w-full h-14 z-30 pointer-events-none">
-                <Header isSideOpen={isSidebarOpen}/>
-            </div> */}
             <Header isSideOpen={isSidebarOpen} isOpen={isSidebarOpen} onToggle={toggleSidebar} />
-
-            {/* <div className={`
-                relative top-0
-                ${mounted ? "duration-300" : "duration-300"}
-                ${isSidebarOpen ? "md:left-16" : "md:left-64"}
-            `}>
-                <RecordingWithIris transparent={true} onClick={() => setIsNowRecord(true)} />
-            </div> */}
             <main
                 className={`
                  transition-all
